@@ -8,8 +8,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     padding: 20,
-    // soft gray backdrop so the white card reads as elevated
-    backgroundColor: "#F2F3F5",
+    backgroundColor: COLORS.background,
   },
   scrollViewStyle: { alignItems: "center", backgroundColor: COLORS.background, },
   topIllustration: { alignItems: "center", width: "100%", marginBottom: 8, },
@@ -26,7 +25,7 @@ const styles = StyleSheet.create({
     shadowRadius: 32,
     elevation: 12,
     borderWidth: 1,
-    borderColor: "#FFFFFF",
+    borderColor: COLORS.border,
   },
   header: { alignItems: "center", marginBottom: 24,},
   brand: {
