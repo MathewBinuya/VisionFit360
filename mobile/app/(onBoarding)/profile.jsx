@@ -207,19 +207,6 @@ export default function Account() {
               />
             </Field>
 
-            {/* Bio (optional) */}
-            <Field label="Bio (optional)">
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="A little about you"
-                  placeholderTextColor={COLORS.placeholderText}
-                  value={form.bio}
-                  onChangeText={setField("bio")}
-                  maxLength={150}
-                />
-              </View>
-            </Field>
           </View>
 
           <PressableScale
