@@ -8,7 +8,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     padding: 20,
-    backgroundColor: COLORS.background,
+    // soft gray backdrop so the white card reads as elevated
+    backgroundColor: "#F2F3F5",
   },
   scrollViewStyle: { alignItems: "center", backgroundColor: COLORS.background, },
   topIllustration: { alignItems: "center", width: "100%", marginBottom: 8, },
@@ -19,13 +20,13 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 28,
     // soft, elevated "floating card" shadow
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.13,
-    shadowRadius: 30,
+    shadowColor: "#1A1D24",
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.12,
+    shadowRadius: 32,
     elevation: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: "#FFFFFF",
   },
   header: { alignItems: "center", marginBottom: 24,},
   brand: {
