@@ -13,7 +13,7 @@ const PEOPLE_PREVIEW = 8;
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const NOT_SPECIFIED = "Not specified";
-const GENDER_ORDER = ["male", "female", "other"];
+const GENDER_ORDER = ["male", "female"];
 const BMI_ORDER = ["Underweight", "Normal", "Overweight", "Obese"];
 const AGE_ORDER = ["Under 13", "13–17", "18–24", "25–34", "35–44", "45–54", "55–64", "65+"];
 
@@ -150,14 +150,28 @@ export default function Dashboard() {
             <Kpi label="Avg rating" value={k?.avgRating || null} hint={`${k?.feedbackCount ?? 0} reviews`} />
           </div>
 
-          {/* trends */}
+          {/* trends — titles link through to the full Analytics page */}
           <div className="grid-2">
-            <Panel title="New users" meta={`last ${range} days`}>
+            <Panel
+              title={
+                <span className="card-title-link" onClick={() => navigate("/analytics")} title="View in Analytics">
+                  New users <span className="title-arrow">→</span>
+                </span>
+              }
+              meta={`last ${range} days`}
+            >
               <StateBlock empty={!data?.analytics?.newUsersTrend?.length} emptyText="No sign-ups in this range.">
                 <LineChart data={data?.analytics?.newUsersTrend || []} />
               </StateBlock>
             </Panel>
-            <Panel title="Completed sessions" meta={`last ${range} days`}>
+            <Panel
+              title={
+                <span className="card-title-link" onClick={() => navigate("/analytics")} title="View in Analytics">
+                  Completed sessions <span className="title-arrow">→</span>
+                </span>
+              }
+              meta={`last ${range} days`}
+            >
               <StateBlock empty={!data?.workouts?.usageTrend?.length} emptyText="No sessions in this range.">
                 <LineChart data={data?.workouts?.usageTrend || []} />
               </StateBlock>
@@ -198,40 +212,52 @@ export default function Dashboard() {
             </Panel>
           </div>
 
-          {/* demographics + logins */}
-          <div className="grid-2">
-            <Panel title="Demographics" meta="excludes users with no data on file">
-              <div className="subhead">Gender</div>
-              <Breakdown rows={toBars(demo.gender, GENDER_ORDER, cap)} />
-              <div className="subhead">Age</div>
-              <Breakdown rows={toAgeBars(demo.age)} />
-              <div className="subhead">BMI category</div>
-              <Breakdown rows={toBars(demo.bmiCategories, BMI_ORDER)} />
-              <div className="inline-stats">
+          {/* demographics — one card per breakdown so each is easy to read */}
+          <div className="section">
+            <div className="section-head">
+              <div>
+                <div className="section-title">Demographics</div>
+                <div className="section-subtitle">excludes users with no data on file</div>
+              </div>
+            </div>
+            <div className="grid-3">
+              <Panel title="Gender">
+                <Breakdown rows={toBars(demo.gender, GENDER_ORDER, cap)} />
+              </Panel>
+              <Panel title="Age">
+                <Breakdown rows={toAgeBars(demo.age)} />
+              </Panel>
+              <Panel title="BMI category">
+                <Breakdown rows={toBars(demo.bmiCategories, BMI_ORDER)} />
+              </Panel>
+            </div>
+            <Panel title="Body averages">
+              <div className="inline-stats" style={{ marginTop: 0, paddingTop: 0, borderTop: "none" }}>
                 <span>Avg height<strong>{body?.avgHeight ? `${Math.round(body.avgHeight)} cm` : "—"}</strong></span>
                 <span>Avg weight<strong>{body?.avgWeight ? `${Math.round(body.avgWeight)} kg` : "—"}</strong></span>
                 <span>Height on file<strong>{body?.withHeight ?? 0}</strong></span>
                 <span>Weight on file<strong>{body?.withWeight ?? 0}</strong></span>
               </div>
             </Panel>
-
-            <Panel
-              title="Recent logins"
-              action={<button className="link-btn" onClick={() => navigate("/users")}>All users →</button>}
-            >
-              <StateBlock empty={!data?.logins?.recent?.length} emptyText="No logins recorded yet.">
-                <ul className="people">
-                  {data?.logins?.recent?.slice(0, PEOPLE_PREVIEW).map((ev) => (
-                    <li key={ev._id} className="person clickable" onClick={() => goUser(ev.user?._id)}>
-                      <Avatar user={ev.user} />
-                      <span className="person-name">{displayName(ev.user)}</span>
-                      <span className="person-time">{relativeTime(ev.createdAt)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </StateBlock>
-            </Panel>
           </div>
+
+          {/* recent logins */}
+          <Panel
+            title="Recent logins"
+            action={<button className="link-btn" onClick={() => navigate("/users")}>All users →</button>}
+          >
+            <StateBlock empty={!data?.logins?.recent?.length} emptyText="No logins recorded yet.">
+              <ul className="people">
+                {data?.logins?.recent?.slice(0, PEOPLE_PREVIEW).map((ev) => (
+                  <li key={ev._id} className="person clickable" onClick={() => goUser(ev.user?._id)}>
+                    <Avatar user={ev.user} />
+                    <span className="person-name">{displayName(ev.user)}</span>
+                    <span className="person-time">{relativeTime(ev.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            </StateBlock>
+          </Panel>
         </StateBlock>
       </div>
     </div>
