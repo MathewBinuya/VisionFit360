@@ -1,8 +1,10 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native'
+import { View, Text, Image, StyleSheet, useWindowDimensions } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import COLORS from "../constants/colors"
+import PressableScale from "../components/PressableScale"
+import FadeInView from "../components/FadeInView"
 
 export default function GetStarted() {
   const { height } = useWindowDimensions();
@@ -17,7 +19,7 @@ export default function GetStarted() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
+      <FadeInView style={styles.content}>
         <Text style={styles.brand}>VISIONFIT360</Text>
         <Text style={styles.title}>Start your{"\n"}journey</Text>
         <Text style={styles.subtitle}>
@@ -31,16 +33,16 @@ export default function GetStarted() {
         />
 
         <View style={styles.buttons}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => go("/(auth)/signup")} activeOpacity={0.85}>
+          <PressableScale style={styles.primaryBtn} onPress={() => go("/(auth)/signup")}>
             <Text style={styles.primaryText}>Get started</Text>
             <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
-          </TouchableOpacity>
+          </PressableScale>
 
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() => go("/(auth)")} activeOpacity={0.85}>
+          <PressableScale style={styles.secondaryBtn} onPress={() => go("/(auth)")}>
             <Text style={styles.secondaryText}>I already have an account</Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
-      </View>
+      </FadeInView>
     </View>
   );
 }

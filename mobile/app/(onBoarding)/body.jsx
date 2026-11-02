@@ -16,6 +16,7 @@ import api from '../../lib/axios';
 import { useAuthStore } from '../../store/authStore';
 import { useAlert } from '../../components/AppAlert';
 import StepProgress from '../../components/StepProgress';
+import PressableScale from '../../components/PressableScale';
 import {
   cmToFtIn, ftInToCm, kgToLb, lbToKg, cleanNumber, unitPrefKey,
   MIN_HEIGHT_CM, MAX_HEIGHT_CM, MIN_WEIGHT_KG, MAX_WEIGHT_KG,
@@ -213,7 +214,7 @@ export default function Body() {
             </View>
           </View>
 
-          <TouchableOpacity
+          <PressableScale
             style={[styles.button, (!isComplete || isSaving) && { opacity: 0.6 }]}
             onPress={handleContinue}
             disabled={isSaving}
@@ -223,7 +224,7 @@ export default function Body() {
             ) : (
               <Text style={styles.buttonText}>Continue</Text>
             )}
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

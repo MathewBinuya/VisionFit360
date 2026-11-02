@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons"
 import styles from '../../assets/styles/authStyle/login.style'
 import COLORS from '../../constants/colors'
 import FadeInView from '../../components/FadeInView'
+import PressableScale from '../../components/PressableScale'
 
 import {useAuthStore} from "../../store/authStore"
 
@@ -124,13 +125,13 @@ const handleLogin = async () => {
                  </View>
               </View>
             </View>
-            <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={isLoading}> 
+            <PressableScale style={styles.button} onPress={handleLogin} disabled={isLoading}>
                   {isLoading ? (
                       <ActivityIndicator color="#fff" />
                     ) : (
                       <Text style={styles.buttonText}>Login</Text>
                     )}
-            </TouchableOpacity>
+            </PressableScale>
 
              <TouchableOpacity
                   onPress={() => router.push("/(auth)/forgot-password")}

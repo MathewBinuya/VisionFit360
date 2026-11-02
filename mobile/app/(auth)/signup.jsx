@@ -9,6 +9,7 @@ import { isAllowedEmail, EMAIL_DOMAIN_ERROR } from '../../lib/emailValidator';
 
 import {useAuthStore} from "../../store/authStore"
 import FadeInView from '../../components/FadeInView'
+import PressableScale from '../../components/PressableScale'
 
 const TERMS_TEXT = `Welcome to VisionFIT360. By creating an account, you agree to the following:
 
@@ -246,7 +247,7 @@ const handleSignUp = async () => {
           </Text>
         )}
         </View>
-         <TouchableOpacity
+         <PressableScale
            style={[styles.button, ((!isValidPassword && password.length > 0) || !agreedToTerms || showEmailError) && { opacity: 0.6 }]}
            onPress={handleSignUp}
            disabled={isLoading}
@@ -256,7 +257,7 @@ const handleSignUp = async () => {
               ) : (
               <Text style={styles.buttonText}>Sign Up</Text>
             )}
-        </TouchableOpacity>
+        </PressableScale>
                   {/* Footer */}
         <View style={styles.footer}>
            <Text style={styles.footerText}>Already have an account?</Text>

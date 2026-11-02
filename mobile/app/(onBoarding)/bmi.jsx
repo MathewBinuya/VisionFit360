@@ -1,6 +1,5 @@
 import { View,
          Text,
-         TouchableOpacity,
          ActivityIndicator,
          ScrollView,
         } from 'react-native'
@@ -12,6 +11,7 @@ import api from '../../lib/axios'
 import { useAuthStore } from '../../store/authStore'
 import { useAlert } from '../../components/AppAlert'
 import StepProgress from '../../components/StepProgress'
+import PressableScale from '../../components/PressableScale'
 import {
   BMI_CATEGORIES,
   categoryInfo,
@@ -142,9 +142,9 @@ export default function BMI() {
           <Text style={styles.empty}>Add your height and weight to see your BMI.</Text>
         )}
 
-        <TouchableOpacity style={styles.button} onPress={handleContinue}>
+        <PressableScale style={styles.button} onPress={handleContinue}>
           <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     </ScrollView>
   );

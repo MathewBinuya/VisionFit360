@@ -9,6 +9,7 @@ import { GOALS } from '../../lib/goals'
 import { useAlert } from '../../components/AppAlert'
 import { useAuthStore } from '../../store/authStore'
 import StepProgress from '../../components/StepProgress'
+import PressableScale from '../../components/PressableScale'
 
 export default function Goal() {
   const alert = useAlert();
@@ -63,13 +64,13 @@ export default function Goal() {
           })}
         </View>
 
-        <TouchableOpacity
+        <PressableScale
           style={[styles.button, isSaving && { opacity: 0.6 }]}
           onPress={handleContinue}
           disabled={isSaving}
         >
           {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Continue</Text>}
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     </ScrollView>
   );

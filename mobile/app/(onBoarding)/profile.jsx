@@ -16,6 +16,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useAlert } from '../../components/AppAlert';
 import DateField from '../../components/DateField';
 import StepProgress from '../../components/StepProgress';
+import PressableScale from '../../components/PressableScale';
 import { ageFromDob, isValidDob, maxBirthDate, minBirthDate, MIN_AGE, MAX_AGE } from '../../lib/age';
 
 const GENDER_OPTIONS = ["male", "female"];
@@ -215,7 +216,7 @@ export default function Account() {
             </Field>
           </View>
 
-          <TouchableOpacity
+          <PressableScale
             style={[styles.button, (!isComplete || isSaving) && { opacity: 0.6 }]}
             onPress={handleContinue}
             disabled={isSaving}
@@ -225,7 +226,7 @@ export default function Account() {
             ) : (
               <Text style={styles.buttonText}>Continue</Text>
             )}
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

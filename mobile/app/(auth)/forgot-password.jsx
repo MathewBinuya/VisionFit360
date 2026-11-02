@@ -7,6 +7,7 @@ import COLORS from "../../constants/colors"
 import styles from '../../assets/styles/authStyle/forgot-password.style'
 import { API_URL } from '../../lib/api'
 import FadeInView from '../../components/FadeInView'
+import PressableScale from '../../components/PressableScale'
 
 
 export default function ForgotPassword() {
@@ -98,9 +99,9 @@ export default function ForgotPassword() {
             <Ionicons name="mail-outline" size={18} color={focused === "email" ? COLORS.button : COLORS.gray} style={styles.inputIcon} />
             <TextInput style={styles.input} placeholder="Enter your email" placeholderTextColor={COLORS.placeholderText} value={email} onChangeText={setEmail} onFocus={() => setFocused("email")} onBlur={() => setFocused(null)} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
           </View>
-          <TouchableOpacity style={[styles.btn, loading && { opacity: 0.6 }]} onPress={requestCode} disabled={loading}>
+          <PressableScale style={[styles.btn, loading && { opacity: 0.6 }]} onPress={requestCode} disabled={loading}>
             {loading ? <ActivityIndicator size="small" color={COLORS.white} /> : <Text style={styles.btnText}>Send Reset Code</Text>}
-          </TouchableOpacity>
+          </PressableScale>
           <TouchableOpacity onPress={() => setStep(2)} style={styles.linkWrap}>
             <Text style={styles.link}>Already have a code?</Text>
           </TouchableOpacity>
@@ -132,9 +133,9 @@ export default function ForgotPassword() {
 
           <Text style={styles.hint}>8+ characters, at least one letter and one number.</Text>
 
-          <TouchableOpacity style={[styles.btn, loading && { opacity: 0.6 }]} onPress={resetPassword} disabled={loading}>
+          <PressableScale style={[styles.btn, loading && { opacity: 0.6 }]} onPress={resetPassword} disabled={loading}>
             {loading ? <ActivityIndicator size="small" color={COLORS.white} /> : <Text style={styles.btnText}>Reset Password</Text>}
-          </TouchableOpacity>
+          </PressableScale>
 
           <TouchableOpacity onPress={() => setStep(1)} style={styles.linkWrap}>
             <Text style={styles.link}>← Back to enter email</Text>
