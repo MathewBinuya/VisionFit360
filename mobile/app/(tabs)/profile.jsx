@@ -403,9 +403,11 @@ export default function Profile() {
             <Text style={styles.changePhotoText}>Change photo</Text>
           </TouchableOpacity>
         )}
-        <Text style={{ fontSize: 19, fontWeight: "700", color: COLORS.black, marginTop: 4, fontFamily: FONT }}>
-          {fullName || form.username || "—"}
-        </Text>
+        {!editing && (
+          <Text style={{ fontSize: 19, fontWeight: "700", color: COLORS.black, marginTop: 4, fontFamily: FONT }}>
+            {fullName || form.username || "—"}
+          </Text>
+        )}
         <Text style={styles.usernameText}>@{user?.username}</Text>
       </View>
 
