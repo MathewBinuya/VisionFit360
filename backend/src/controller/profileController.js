@@ -11,17 +11,40 @@ export const getProfile = async (req, res) => {
   }
 };
 
+// Fields that may only be set ONCE: after the account has a value, it can't be
+// changed here (matches the product's "lock after you set it" rule).
+const SET_ONCE_FIELDS = ["dateOfBirth", "firstName", "lastName", "middleName"];
+
 export const updateProfile = async (req, res) => {
   try {
-    const { name, photo, bio, dateOfBirth, gender, heightCm, weightKg, goal } = req.body;
-    const updates = { name, photo, bio, dateOfBirth, gender, heightCm, weightKg, goal };
+    const { name, photo, bio, username, firstName, lastName, middleName,
+            dateOfBirth, gender, heightCm, weightKg, goal } = req.body;
+    const updates = { name, photo, bio, username, firstName, lastName, middleName,
+                      dateOfBirth, gender, heightCm, weightKg, goal };
     Object.keys(updates).forEach((k) => updates[k] === undefined && delete updates[k]);
 
-    // Date of birth is set-once: if the account already has one, never overwrite
-    // it (it drives the AI age-safety tiers). It can only be set when still empty.
-    if (updates.dateOfBirth !== undefined) {
-      const current = await User.findById(req.user.id).select("dateOfBirth");
-      if (current?.dateOfBirth) delete updates.dateOfBirth;
+    // Username = the public @handle / "Hello, X" identity. Editable and unique:
+    // validate the format and make sure no other account already holds it.
+    if (updates.username !== undefined) {
+      const uname = String(updates.username).trim();
+      if (!/^[a-zA-Z0-9_]{3,30}$/.test(uname))
+        return res.status(400).json({ message: "Username must be 3–30 characters: letters, numbers or underscores." });
+      const taken = await User.findOne({ username: uname, _id: { $ne: req.user.id } }).select("_id");
+      if (taken) return res.status(400).json({ message: "That username is already taken." });
+      updates.username = uname;
+    }
+
+    // Set-once fields (date of birth + real name): never overwrite a value the
+    // account already has; each can only be set while it's still empty.
+    if (SET_ONCE_FIELDS.some((f) => updates[f] !== undefined)) {
+      const current = await User.findById(req.user.id).select(SET_ONCE_FIELDS.join(" "));
+      for (const field of SET_ONCE_FIELDS) {
+        if (updates[field] === undefined) continue;
+        const existing = current?.[field];
+        const alreadySet = field === "dateOfBirth" ? !!existing : !!String(existing || "").trim();
+        if (alreadySet) { delete updates[field]; continue; }
+        if (field !== "dateOfBirth") updates[field] = String(updates[field] || "").trim();
+      }
     }
 
     const user = await User.findByIdAndUpdate(req.user.id, updates, {
@@ -31,6 +54,10 @@ export const updateProfile = async (req, res) => {
 
     res.json(user);
   } catch (err) {
+    // unique-index race on username -> friendly message instead of a 500
+    if (err?.code === 11000 && err?.keyPattern?.username) {
+      return res.status(400).json({ message: "That username is already taken." });
+    }
     res.status(500).json({ message: err.message });
   }
 };

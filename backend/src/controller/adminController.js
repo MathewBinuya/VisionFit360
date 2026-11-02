@@ -28,7 +28,7 @@ const generateAdminToken = (id) =>
 // dateOfBirth is shown in the admin (user detail + age demographics); age itself
 // is derived from it on the client, never stored.
 const SAFE_USER_FIELDS =
-  "name username email photo bio gender dateOfBirth goal heightCm weightKg status onBoardingComplete isVerified createdAt updatedAt lastLoginAt lastActiveAt";
+  "name username email photo bio firstName lastName middleName gender dateOfBirth goal heightCm weightKg status onBoardingComplete isVerified createdAt updatedAt lastLoginAt lastActiveAt";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

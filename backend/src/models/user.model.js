@@ -3,15 +3,23 @@ import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
-    username: { type: String, required: true, unique: true },
+    // username is the single public identity (@handle + "Hello, X" greeting). It
+    // is now chosen during onboarding rather than at signup, so an account can
+    // briefly exist without one — hence not required, and a sparse unique index
+    // so the many "no username yet" accounts don't collide.
+    username: { type: String, unique: true, sparse: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true, minlength: 6 },
     onBoardingComplete: { type: Boolean, default: false },
-    name: { type: String, default: "" },
+    name: { type: String, default: "" }, // legacy display name; kept for existing data
+    // real name (optional, set-once). Middle name is optional even then.
+    firstName: { type: String, default: "" },
+    lastName: { type: String, default: "" },
+    middleName: { type: String, default: "" },
     photo: { type: String, default: "" },
     bio: { type: String, default: "" },
     dateOfBirth: Date,
-    gender: { type: String, enum: ["male", "female", "other"] },
+    gender: { type: String, enum: ["male", "female"] },
     // fitness goal — optional with a safe default; existing users read as "get_fit"
     // only after they save, so consumers must still handle a missing value.
     goal: { type: String, enum: ["get_fit", "maintain_weight", "get_lean"], default: "get_fit" },

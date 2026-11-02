@@ -65,13 +65,11 @@ function issueVerificationCode(user) {
 
 export const register = async (req, res) => {
   try {
-    const { email, username, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!username || !email || !password)
-      return res.status(400).json({ message: "All fields are required" });
+    if (!email || !password)
+      return res.status(400).json({ message: "Email and password are required" });
 
-    if (username.length > 30)
-      return res.status(400).json({ message: "Username must be 30 characters or less" });
     if (email.length > 100)
       return res.status(400).json({ message: "Email is too long" });
     if (password.length > 64)
@@ -108,23 +106,16 @@ export const register = async (req, res) => {
       }
     }
 
-    const existingUsername = await User.findOne({ username });
-    // block on username collision, unless it's literally the same unverified record we're about to reuse
-    if (
-      existingUsername &&
-      (!existingEmail || existingUsername._id.toString() !== existingEmail._id.toString())
-    ) {
-      return res.status(400).json({ message: "Username already exists" });
-    }
-
+    // Username is no longer collected at signup — it is chosen during onboarding
+    // (with a uniqueness check there). An account is created with email + password
+    // only; the public @handle/username is set on the first onboarding step.
     let user;
     if (existingEmail) {
       // stale unverified account from a previous incomplete signup — reuse it
-      existingEmail.username = username;
       existingEmail.password = password; // pre-save hook re-hashes since password is modified
       user = existingEmail;
     } else {
-      user = new User({ email: normalizedEmail, username, password });
+      user = new User({ email: normalizedEmail, password });
     }
 
     const verificationCode = issueVerificationCode(user);
