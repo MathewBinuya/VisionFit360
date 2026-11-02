@@ -75,6 +75,7 @@ export default function UserDetail() {
                 <div className="card">
                   <h3 className="card-title">Account &amp; activity</h3>
                   <Row label="Email" value={u.email} />
+                  <Row label="Full name" value={[u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ") || null} />
                   <Row label="Status" value={<span className={`badge ${st.className}`}>{st.label}</span>} />
                   <Row label="Last login" value={u.lastLoginAt ? relativeTime(u.lastLoginAt) : "Never"} />
                   <Row label="Last active" value={u.lastActiveAt ? relativeTime(u.lastActiveAt) : "Never"} />
