@@ -1,5 +1,5 @@
-import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Modal } from 'react-native'
-import { useState, useEffect, useCallback } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Modal, Animated } from 'react-native'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from "@expo/vector-icons"
 import * as Notifications from 'expo-notifications'
@@ -8,6 +8,8 @@ import COLORS from "../../constants/colors"
 import styles from '../../assets/styles/tabStyle/home.style'
 import api from '../../lib/axios'
 import { useAuthStore } from '../../store/authStore'
+import PressableScale from '../../components/PressableScale'
+import CountUp from '../../components/CountUp'
 import {
   refreshProgressNotifications, requestPermission, scheduleProgressNotifications,
   NOTIF_SETTINGS_KEY, MORNING, EVENING, TIMEZONE,
@@ -139,6 +141,17 @@ export default function Home() {
   const bmi = bmiData();
   const recent = workouts.slice(0, 2);
 
+  // One-shot entrance: content gently fades + rises in on mount (native driver,
+  // no loops — cheap, runs once).
+  const enter = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enter, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enter,
+    transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
+  };
+
   const bmiColor = (cat) => {
     if (cat === "Normal") return COLORS.button;
     if (cat === "Underweight" || cat === "Overweight") return "#854f0b";
@@ -190,19 +203,20 @@ export default function Home() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.button} colors={[COLORS.button]} />
         }
       >
-        {/* stats strip */}
+        <Animated.View style={enterStyle}>
+        {/* stats strip — numbers count up on load */}
         <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.statCard} onPress={() => router.push("/progress")} activeOpacity={0.7}>
+          <PressableScale style={styles.statCard} onPress={() => router.push("/progress")}>
             <Text style={styles.statLabel}>Workouts done</Text>
-            <Text style={styles.statValue}>{workoutsDone}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard} onPress={() => router.push("/progress")} activeOpacity={0.7}>
+            <CountUp value={workoutsDone} style={styles.statValue} />
+          </PressableScale>
+          <PressableScale style={styles.statCard} onPress={() => router.push("/progress")}>
             <Text style={styles.statLabel}>Volume this week</Text>
             <Text style={styles.statValue}>
-              {volumeThisWeek.toLocaleString()}
+              <CountUp value={volumeThisWeek} format={(n) => n.toLocaleString()} />
               <Text style={styles.statUnit}> kg</Text>
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
         <TouchableOpacity style={styles.progressLink} onPress={() => router.push("/progress")}>
           <Ionicons name="stats-chart-outline" size={16} color={COLORS.black} />
@@ -210,16 +224,35 @@ export default function Home() {
           <Ionicons name="chevron-forward" size={16} color={COLORS.placeholderText} />
         </TouchableOpacity>
 
+        {/* Workout Tracker — primary action, moved up front */}
+        <PressableScale style={styles.trackerCard} onPress={() => router.push("/workout")}>
+          <Ionicons name="barbell" size={24} color={COLORS.white} />
+          <View style={{ marginLeft: 12 }}>
+            <Text style={styles.trackerTitle}>Workout Tracker</Text>
+            <Text style={styles.trackerSub}>{"Log today's session"}</Text>
+          </View>
+        </PressableScale>
+
+        {/* RepVision + History — quick actions */}
+        <View style={styles.placeholderRow}>
+          <PressableScale style={styles.placeholder} onPress={() => router.push("/ar-select")}>
+            <Ionicons name="body-outline" size={24} color={COLORS.button} />
+            <Text style={styles.placeholderLabel}>RepVision</Text>
+            <Text style={styles.placeholderSub}>AR rep counter</Text>
+          </PressableScale>
+          <PressableScale style={styles.historyButton} onPress={() => router.push("/history")}>
+            <Ionicons name="time-outline" size={24} color={COLORS.button} />
+            <Text style={styles.historyButtonLabel}>History</Text>
+            <Text style={styles.historyButtonSub}>Past sessions</Text>
+          </PressableScale>
+        </View>
+
         {/* activity grid + streak (completed workouts per day) */}
         <ActivityCard calendar={calendar} style={{ marginBottom: 14 }} />
 
         {/* BMI card — tap to open Profile (where height/weight live) */}
         {bmi && (
-          <TouchableOpacity
-            style={styles.bmiCard}
-            onPress={() => router.push("/(tabs)/profile")}
-            activeOpacity={0.7}
-          >
+          <PressableScale style={styles.bmiCard} onPress={() => router.push("/(tabs)/profile")}>
             <View>
               <Text style={styles.bmiLabel}>Your BMI</Text>
               <Text style={styles.bmiValue}>{bmi.bmi}</Text>
@@ -232,40 +265,8 @@ export default function Home() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={COLORS.placeholderText} />
             </View>
-          </TouchableOpacity>
+          </PressableScale>
         )}
-
-        {/* Workout Tracker */}
-        <TouchableOpacity
-          style={styles.trackerCard}
-          onPress={() => router.push("/workout")}
-        >
-          <Ionicons name="barbell" size={24} color={COLORS.white} />
-          <View style={{ marginLeft: 12 }}>
-            <Text style={styles.trackerTitle}>Workout Tracker</Text>
-            <Text style={styles.trackerSub}>{"Log today's session"}</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* AR Camera (placeholder) + History (functional) */}
-        <View style={styles.placeholderRow}>
-        <TouchableOpacity
-            style={styles.placeholder}
-            onPress={() => router.push("/ar-select")}
-        >
-            <Ionicons name="body-outline" size={24} color={COLORS.button} />
-            <Text style={styles.placeholderLabel}>RepVision</Text>
-            <Text style={styles.placeholderSub}>AR rep counter</Text>
-        </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.historyButton}
-            onPress={() => router.push("/history")}
-          >
-            <Ionicons name="time-outline" size={24} color={COLORS.button} />
-            <Text style={styles.historyButtonLabel}>History</Text>
-            <Text style={styles.historyButtonSub}>Past sessions</Text>
-          </TouchableOpacity>
-        </View>
 
         {/* recent peek */}
         <View style={styles.recentHeader}>
@@ -293,6 +294,7 @@ export default function Home() {
             </View>
           ))
         )}
+        </Animated.View>
       </ScrollView>
 
       {/* FIRST-RUN NOTIFICATION ASK — Modal so the dim backdrop covers the whole screen uniformly */}

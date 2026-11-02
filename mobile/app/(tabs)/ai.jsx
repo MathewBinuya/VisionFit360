@@ -7,6 +7,7 @@ import COLORS from "../../constants/colors"
 import styles from '../../assets/styles/tabStyle/ai.style'
 import api from '../../lib/axios'
 import { useAuthStore } from '../../store/authStore'
+import Celebration from '../../components/Celebration'
 
 const formatRecommendationText = (rec) => {
   const exerciseLines = rec.exercises.map((ex) => {
@@ -33,6 +34,7 @@ export default function AICoach() {
 
   const [menuMessage, setMenuMessage] = useState(null);
   const [addingToTracker, setAddingToTracker] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
 
   //  FIRST-TIME GUIDE 
   const [showGuide, setShowGuide] = useState(false);
@@ -155,7 +157,7 @@ export default function AICoach() {
         exercises,
       });
       setMenuMessage(null);
-      showAlert("Added!", "This workout was added to your tracker.");
+      setCelebrate(true); // 🎉 celebrate the conversion
     } catch (error) {
       showAlert("Error", error.response?.data?.message || "Failed to add to tracker");
     } finally {
@@ -332,6 +334,14 @@ export default function AICoach() {
           <Ionicons name="send" size={18} color={COLORS.white} />
         </TouchableOpacity>
       </View>
+
+      {/* celebration when an AI workout is converted to the tracker */}
+      <Celebration
+        visible={celebrate}
+        title="Added to your tracker! 🎉"
+        message="Your AI workout is ready in the Workout Tracker."
+        onClose={() => setCelebrate(false)}
+      />
     </KeyboardAvoidingView>
   );
 }

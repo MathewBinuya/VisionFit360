@@ -43,6 +43,17 @@ const styles = StyleSheet.create({
   exerciseName: { fontSize: 14, fontWeight: "600", color: COLORS.black, marginBottom: 2, fontFamily: "GeneralSans-Variable" },
   setLine: { fontSize: 12, color: COLORS.placeholderText, marginBottom: 1, fontFamily: "GeneralSans-Variable" },
 
+  // compact collapsed summary row (exercise/set counts + progress + chevron)
+  cardSummary: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
+  cardSummaryText: { fontSize: 13, color: COLORS.placeholderText, fontFamily: "GeneralSans-Variable" },
+  progressTrack: { height: 4, borderRadius: 2, backgroundColor: COLORS.inputBackground, marginTop: 7, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 2, backgroundColor: COLORS.button },
+
+  // tappable "set done" checkbox row on each workout card
+  setCheckRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
+  setCheckText: { flex: 1, fontSize: 12, color: COLORS.placeholderText, fontFamily: "GeneralSans-Variable" },
+  setCheckTextDone: { textDecorationLine: "line-through", color: COLORS.gray },
+
   // "Mark Complete" button on each workout card
   completeBtn: {
     flexDirection: "row",

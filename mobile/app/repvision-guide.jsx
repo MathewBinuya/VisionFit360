@@ -1,6 +1,7 @@
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native'
-import { useState, useEffect, useCallback } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, useWindowDimensions, Animated, Easing } from 'react-native'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { goBack } from '../lib/nav'
 import { Image } from 'expo-image'
 import { Ionicons } from "@expo/vector-icons"
@@ -16,6 +17,55 @@ const BORDER_LEGEND = [
   { color: "#E0A526", label: "Amber", text: "Position unclear or app not ready yet." },
 ];
 
+// Collapsible guide section — keeps every detail but tucks it behind a tappable
+// header, so the page stays minimal and the user opens only what they need.
+function GuideSection({ title, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  // Gentle "tap me" nudge on the See more chevron — a native-driver loop (cheap,
+  // runs on the UI thread). It ONLY runs while collapsed; opening stops it.
+  const boost = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (open) { boost.stopAnimation(); boost.setValue(0); return; }
+    // chevron shoots downward fast then eases to a stop (ease-OUT = decelerate,
+    // right for a downward motion), fades, then the loop resets it to the top —
+    // reading like a repeating downward "boost".
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(boost, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.delay(350),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [open]);
+  const translateY = boost.interpolate({ inputRange: [0, 1], outputRange: [0, 14] });
+  const boostOpacity = boost.interpolate({ inputRange: [0, 0.6, 1], outputRange: [1, 1, 0] });
+
+  return (
+    <View style={styles.tipsBox}>
+      <TouchableOpacity
+        style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+        onPress={() => setOpen((o) => !o)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.tipsHeading, { flex: 1, marginBottom: 0 }]}>{title}</Text>
+        <Text style={{ fontSize: 13, fontWeight: "600", color: COLORS.button }}>
+          {open ? "See less" : "See more"}
+        </Text>
+        {open ? (
+          <Ionicons name="chevron-up" size={18} color={COLORS.button} />
+        ) : (
+          <Animated.View style={{ transform: [{ translateY }], opacity: boostOpacity }}>
+            <Ionicons name="chevron-down" size={18} color={COLORS.button} />
+          </Animated.View>
+        )}
+      </TouchableOpacity>
+      {open && <View style={{ marginTop: 12 }}>{children}</View>}
+    </View>
+  );
+}
+
 export default function RepVisionGuide() {
   // `from=ar` means we were opened on top of a live AR session.
   const { exercise = "squat", from } = useLocalSearchParams();
@@ -30,6 +80,7 @@ export default function RepVisionGuide() {
   const ex = found || AR_EXERCISES[0];
 
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   // Live demo from AscendAPI. status: 'none' (no mapping) | 'loading' | 'ready' | 'failed'
   const ascendId = ex.ascend?.id || null;
@@ -69,7 +120,7 @@ export default function RepVisionGuide() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}>
         {unknownKey && (
           <View style={styles.warnBox}>
             <Ionicons name="alert-circle-outline" size={16} color="#854f0b" />
@@ -143,10 +194,9 @@ export default function RepVisionGuide() {
           ))}
         </View>
 
-        {/* step-by-step instructions */}
+        {/* step-by-step — the core guide, open by default */}
         {!!ex.instructions?.length && (
-          <View style={styles.tipsBox}>
-            <Text style={styles.tipsHeading}>How to perform it</Text>
+          <GuideSection title="How to perform it" defaultOpen>
             {ex.instructions.map((step, i) => (
               <View key={i} style={styles.tipRow}>
                 <View style={styles.tipNumber}>
@@ -155,26 +205,24 @@ export default function RepVisionGuide() {
                 <Text style={styles.tipText}>{step}</Text>
               </View>
             ))}
-          </View>
+          </GuideSection>
         )}
 
-        {/* setup & form tips (unchanged content) */}
+        {/* setup & form tips — tap to expand */}
         {!!ex.tips?.length && (
-          <View style={styles.tipsBox}>
-            <Text style={styles.tipsHeading}>Setup & form tips</Text>
+          <GuideSection title="Setup & form tips">
             {ex.tips.map((tip, i) => (
               <View key={i} style={styles.tipRow}>
                 <View style={styles.bullet} />
                 <Text style={styles.tipText}>{tip}</Text>
               </View>
             ))}
-          </View>
+          </GuideSection>
         )}
 
-        {/* NEW FEATURE — weight logging & personal records (weighted lifts only) */}
+        {/* weight logging & personal records (weighted lifts only) — tap to expand */}
         {/dumbbell|barbell/i.test(ex.equipment || "") && (
-          <View style={styles.tipsBox}>
-            <Text style={styles.tipsHeading}>Tracking your lifts & PRs</Text>
+          <GuideSection title="Tracking your lifts & PRs">
             {[
               "Set the weight you're lifting on the tracker with the − / + buttons (or tap to type it).",
               "On Finish & Save, the set — your reps and weight — is saved to your History.",
@@ -186,12 +234,11 @@ export default function RepVisionGuide() {
                 <Text style={styles.tipText}>{t}</Text>
               </View>
             ))}
-          </View>
+          </GuideSection>
         )}
 
-        {/* shared: setup + what the border colours mean */}
-        <View style={styles.tipsBox}>
-          <Text style={styles.tipsHeading}>Setup & border colours</Text>
+        {/* shared setup + border colours — tap to expand */}
+        <GuideSection title="Setup & border colours">
           {[
             "Place your phone at about hip height.",
             "Stand about 2–3 m away so your full body and head are in frame.",
@@ -212,7 +259,7 @@ export default function RepVisionGuide() {
               </Text>
             </View>
           ))}
-        </View>
+        </GuideSection>
 
         <TouchableOpacity style={styles.startBtn} onPress={onStart}>
           <Ionicons name="camera" size={20} color={COLORS.white} />

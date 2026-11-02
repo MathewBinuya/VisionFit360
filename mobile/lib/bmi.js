@@ -36,3 +36,15 @@ export const BMI_LIMITATIONS =
 // Shown when we can't apply an adult category (age unknown/under 18 or bad data).
 export const BMI_NEUTRAL_NOTE =
   "Adult BMI categories apply from age 18. We're showing your number without a category — treat it as general context only.";
+
+// Non-medical scope (documented, not shown in the UI by product decision):
+// VisionFIT only checks the BMI number computed from the user's height & weight
+// against the standard adult categories above. It is NOT a diagnosis, a health-
+// risk prediction, or any kind of medical output.
+//
+// Academic basis for using the standard adult categories (reference only — we
+// cite this to ground WHY these cut-offs are used, not to produce medical output):
+//   Visaria A, Setoguchi S. "Body mass index and all-cause mortality in a 21st
+//   century U.S. population: A National Health Interview Survey analysis."
+//   PLOS ONE, 2023.
+//   https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0287218

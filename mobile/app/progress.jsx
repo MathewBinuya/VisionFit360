@@ -1,5 +1,6 @@
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, BackHandler, Modal } from 'react-native'
-import { useState, useCallback, useEffect } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, BackHandler, Modal, Animated } from 'react-native'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import CountUp from '../components/CountUp'
 import { useFocusEffect } from 'expo-router'
 import { goBack } from '../lib/nav'
 import { Ionicons } from "@expo/vector-icons"
@@ -7,12 +8,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import COLORS from "../constants/colors"
 import styles from '../assets/styles/progress.style'
 import api from '../lib/axios'
-import { shortDate, weekRange, manilaDate, compactKg, formatPct, formatDiff, guideSeenKey } from '../lib/progress'
+import { shortDate, weekRange, manilaDate, compactKg, formatDiff, guideSeenKey } from '../lib/progress'
 import { useAuthStore } from '../store/authStore'
 import { unitPrefKey, LB_TO_KG } from '../lib/units'
 
 const PAST_BAR = "#D9D9D9";
 const LIFTS_PREVIEW = 4;
+const UP_COLOR = "#1E8E4E"; // gentle green for "more / up"
+
+// Plain-language week-over-week change — users read words + a real amount, not "%".
+// `diff` and `unit` are already in the user's chosen display unit (kg/lb).
+const describeVsPrev = (diff, unit) => {
+  if (diff > 0) return `${compactKg(diff)} ${unit} more than the week before`;
+  if (diff < 0) return `${compactKg(-diff)} ${unit} less than the week before`;
+  return "about the same as the week before";
+};
 
 
 const GUIDE_STEPS = [
@@ -46,6 +56,14 @@ const GUIDE_STEPS = [
 // One series, so no legend — the card title names it. Tap a bar to read its week.
 function WeeklyBars({ weeks, field, selected, onSelect }) {
   const max = Math.max(1, ...weeks.map((w) => w[field]));
+
+  // Bars grow up from the baseline when the data (re)loads.
+  const grow = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    grow.setValue(0);
+    Animated.timing(grow, { toValue: 1, duration: 650, useNativeDriver: false }).start();
+  }, [weeks, field]);
+
   return (
     <View>
       <View style={styles.chart}>
@@ -61,9 +79,12 @@ function WeeklyBars({ weeks, field, selected, onSelect }) {
               activeOpacity={0.7}
               accessibilityLabel={`${weekRange(w)}: ${w[field]}`}
             >
-              <View style={[
+              <Animated.View style={[
                 styles.bar,
-                { height: `${h}%`, backgroundColor: isCurrent || isSelected ? COLORS.button : PAST_BAR },
+                {
+                  height: grow.interpolate({ inputRange: [0, 1], outputRange: ['0%', `${h}%`] }),
+                  backgroundColor: isCurrent || isSelected ? COLORS.button : PAST_BAR,
+                },
               ]} />
             </TouchableOpacity>
           );
@@ -86,6 +107,18 @@ function ChangeBadge({ text }) {
   return (
     <View style={styles.changeBadge}>
       <Text style={styles.changeText}>{text}</Text>
+    </View>
+  );
+}
+
+// Friendly card header: a small icon chip + a plain sentence-case title.
+function CardHeader({ icon, title }) {
+  return (
+    <View style={styles.cardHead}>
+      <View style={styles.cardHeadIcon}>
+        <Ionicons name={icon} size={15} color={COLORS.button} />
+      </View>
+      <Text style={styles.cardTitleText}>{title}</Text>
     </View>
   );
 }
@@ -183,14 +216,33 @@ export default function Progress() {
     const volSelected = volSel != null ? weeks[volSel] : null;
     const wkSelected = wkSel != null ? weeks[wkSel] : null;
 
+    // Weekly volume change, in plain words + a real amount (no percentages).
+    const volDiff = uw(s.thisWeek.volume) - uw(s.lastWeek.volume);
+    let volBadge = null, volSentence = null;
+    if (s.lastWeek.volume <= 0) {
+      if (s.thisWeek.volume > 0) {
+        volBadge = { word: "New", arrow: null, color: COLORS.placeholderText };
+        volSentence = "Your first tracked week — great start! 💪";
+      }
+    } else if (volDiff > 0) {
+      volBadge = { word: "More", arrow: "arrow-up", color: UP_COLOR };
+      volSentence = `You've lifted ${compactKg(volDiff)} ${weightUnit} more than last week.`;
+    } else if (volDiff < 0) {
+      volBadge = { word: "Less", arrow: "arrow-down", color: COLORS.placeholderText };
+      volSentence = `About ${compactKg(-volDiff)} ${weightUnit} less than last week so far.`;
+    } else {
+      volBadge = { word: "Same", arrow: null, color: COLORS.placeholderText };
+      volSentence = "About the same as last week so far.";
+    }
+
     return (
       <>
         {/* weekly volume */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>TOTAL WEIGHT LIFTED</Text>
+          <CardHeader icon="barbell-outline" title="Weight lifted" />
           <Text style={styles.cardSub}>All the weight you lifted this week (each set's reps × weight, added up).</Text>
           <View style={styles.heroRow}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.hero}>
                 <Text style={styles.heroFrom}>{compactKg(uw(s.lastWeek.volume))} → </Text>
                 {compactKg(uw(s.thisWeek.volume))}
@@ -198,15 +250,21 @@ export default function Progress() {
               </Text>
               <Text style={styles.caption}>Last week → this week so far</Text>
             </View>
-            <ChangeBadge text={s.volumeChangePct != null ? formatPct(s.volumeChangePct) : null} />
+            {volBadge && (
+              <View style={styles.changeBadge}>
+                {volBadge.arrow && <Ionicons name={volBadge.arrow} size={13} color={volBadge.color} style={{ marginRight: 3 }} />}
+                <Text style={[styles.changeText, { color: volBadge.color }]}>{volBadge.word}</Text>
+              </View>
+            )}
           </View>
+          {volSentence && <Text style={styles.changeSentence}>{volSentence}</Text>}
           <WeeklyBars weeks={weeks} field="volume" selected={volSel} onSelect={setVolSel} />
           {volSelected && (
             <View style={styles.readout}>
               <Text style={styles.readoutText}>
                 {weekRange(volSelected)} · {uw(volSelected.volume).toLocaleString()} {weightUnit}
                 {volSel > 0 && weeks[volSel - 1].volume > 0
-                  ? ` · ${formatPct(Math.round(((volSelected.volume - weeks[volSel - 1].volume) / weeks[volSel - 1].volume) * 1000) / 10)} vs previous week`
+                  ? ` · ${describeVsPrev(uw(volSelected.volume) - uw(weeks[volSel - 1].volume), weightUnit)}`
                   : ""}
               </Text>
             </View>
@@ -215,7 +273,7 @@ export default function Progress() {
 
         {/* weekly workouts / consistency */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>WORKOUTS PER WEEK</Text>
+          <CardHeader icon="calendar-outline" title="Workouts per week" />
           <Text style={styles.cardSub}>How many workouts you finished, vs. your weekly goal.</Text>
           <View style={styles.heroRow}>
             <View>
@@ -238,7 +296,7 @@ export default function Progress() {
           )}
           <View style={styles.statGrid}>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>{s.weekStreak} week{s.weekStreak === 1 ? "" : "s"}</Text>
+              <CountUp value={s.weekStreak} style={styles.statValue} format={(n) => `${n} week${n === 1 ? "" : "s"}`} />
               <Text style={styles.statLabel}>Weeks in a row</Text>
             </View>
             <View style={styles.statCell}>
@@ -246,7 +304,7 @@ export default function Progress() {
               <Text style={styles.statLabel}>Avg workouts per week</Text>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>{s.activeWeeks} of {weeks.length}</Text>
+              <CountUp value={s.activeWeeks} style={styles.statValue} format={(n) => `${n} of ${weeks.length}`} />
               <Text style={styles.statLabel}>Weeks you trained</Text>
             </View>
             <View style={styles.statCell}>
@@ -261,7 +319,7 @@ export default function Progress() {
         {/* recent PRs */}
         {data.recentPRs?.length > 0 && (
           <View style={styles.card}>
-            <Text style={[styles.cardTitle, { marginBottom: 4 }]}>RECENT PERSONAL RECORDS</Text>
+            <CardHeader icon="trophy-outline" title="Recent personal records" />
             {data.recentPRs.map((pr, i) => (
               <View key={i}>
                 {i > 0 && <View style={styles.divider} />}
@@ -281,7 +339,7 @@ export default function Progress() {
 
         {/* heaviest lifts */}
         <View style={styles.card}>
-          <Text style={[styles.cardTitle, { marginBottom: 4 }]}>HEAVIEST LIFTS</Text>
+          <CardHeader icon="medal-outline" title="Heaviest lifts" />
           {data.records.length === 0 ? (
             <Text style={[styles.muted, { textAlign: "left", marginTop: 6 }]}>
               Log sets with a weight ({weightUnit}) in the Workout Tracker to track your heaviest lifts.
@@ -289,7 +347,7 @@ export default function Progress() {
           ) : (
             <>
               {(showAllLifts ? data.records : data.records.slice(0, LIFTS_PREVIEW)).map((r, i) => (
-                <View key={r.exercise} style={[styles.liftRow, i > 0 && styles.liftRowBorder]}>
+                <View key={`${r.exercise}-${i}`} style={[styles.liftRow, i > 0 && styles.liftRowBorder]}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.liftName} numberOfLines={1}>{r.exercise}</Text>
                     <Text style={styles.liftSub}>{manilaDate(r.bestDate)}</Text>

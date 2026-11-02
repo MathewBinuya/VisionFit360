@@ -1,8 +1,9 @@
-import { View, Text, TouchableOpacity, ScrollView, Modal } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, Modal, BackHandler } from 'react-native'
 import { showAlert } from '../components/AppAlert'
 import { useState, useEffect } from 'react'
 import { goBack } from '../lib/nav'
 import { Ionicons } from "@expo/vector-icons"
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import COLORS from "../constants/colors"
 import styles from '../assets/styles/history.style'
 import api from '../lib/axios'
@@ -33,6 +34,7 @@ const bucketLabel = (d) => {
 };
 
 export default function History() {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,24 @@ export default function History() {
   const [weightUnit, setWeightUnit] = useState("kg"); // mirror the user's kg/lb preference
   const [sortDir, setSortDir] = useState("desc");      // 'desc' = newest first, 'asc' = oldest first
 
+  //  MULTI-SELECT DELETE
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState({}); // { [workoutId]: true }
+
   const toggleExpanded = (id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const exitSelect = () => { setSelectMode(false); setSelected({}); };
+  const enterSelect = (id) => { setSelectMode(true); setSelected(id ? { [id]: true } : {}); };
+  const toggleSelect = (id) => setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  // Hardware back exits selection mode first (instead of leaving the screen).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (selectMode) { exitSelect(); return true; }
+      return false;
+    });
+    return () => sub.remove();
+  }, [selectMode]);
 
   useEffect(() => {
     loadHistory();
@@ -80,10 +99,20 @@ export default function History() {
     }
   };
 
+  // A workout logged with the per-set checkboxes has at least one finished set —
+  // its totals count only finished sets. Older workouts (no finished flags) count
+  // every set, as before, so existing history totals never change.
+  const countsOnlyDone = (w) =>
+    (w?.exercises || []).some((ex) => (ex.sets || []).some((s) => s.completed));
+
   const totalVolume = (w) => {
+    const onlyDone = countsOnlyDone(w);
     let total = 0;
     w.exercises?.forEach((ex) => {
-      ex.sets?.forEach((s) => { total += (s.reps || 0) * (s.weightKg || 0); });
+      ex.sets?.forEach((s) => {
+        if (onlyDone && !s.completed) return;
+        total += (s.reps || 0) * (s.weightKg || 0);
+      });
     });
     return total;
   };
@@ -106,6 +135,35 @@ export default function History() {
       setWorkouts((prev) => prev.filter((w) => w._id !== id));
     } catch (error) {
       showAlert("Error", error.response?.data?.message || "Failed to delete");
+    }
+  };
+
+  //  BULK DELETE (multi-select)
+  const confirmBulkDelete = () => {
+    const n = selectedCount;
+    if (!n) return;
+    showAlert(
+      "Delete workouts",
+      `Remove ${n} workout${n === 1 ? "" : "s"} from your history? This can't be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: bulkDelete },
+      ]
+    );
+  };
+
+  const bulkDelete = async () => {
+    const ids = Object.keys(selected).filter((id) => selected[id]);
+    if (!ids.length) return;
+    // Delete independently so one failure doesn't block the rest.
+    const results = await Promise.allSettled(ids.map((id) => api.delete(`/workouts/${id}`)));
+    const ok = new Set();
+    results.forEach((r, i) => { if (r.status === "fulfilled") ok.add(ids[i]); });
+    setWorkouts((prev) => prev.filter((w) => !ok.has(w._id)));
+    exitSelect();
+    const failed = ids.length - ok.size;
+    if (failed > 0) {
+      showAlert("Some not deleted", `${ok.size} removed · ${failed} couldn't be deleted. Please try again.`);
     }
   };
 
@@ -150,19 +208,46 @@ export default function History() {
     rows.push({ type: "card", w, key: w._id });
   });
 
+  // Only synced workouts can be bulk-deleted (pending ones have no server id yet).
+  const selectableIds = ordered.filter((w) => !w._pending).map((w) => w._id);
+  const selectedCount = Object.values(selected).filter(Boolean).length;
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected[id]);
+  const toggleSelectAll = () => {
+    if (allSelected) { setSelected({}); return; }
+    const next = {};
+    selectableIds.forEach((id) => { next[id] = true; });
+    setSelected(next);
+  };
+
   const renderCard = (w) => {
     const isOpen = !!expanded[w._id];
     const exCount = w.exercises?.length || 0;
     const vol = Number(showWeight(totalVolume(w)));
     const dateStr = new Date(workoutTime(w)).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    const selectable = !w._pending;          // pending items have no server id to delete
+    const isSelected = !!selected[w._id];
     return (
       <TouchableOpacity
         key={w._id}
-        style={styles.historyCard}
+        style={[styles.historyCard, selectMode && isSelected && { borderColor: COLORS.button, borderWidth: 1.5 }]}
         activeOpacity={0.75}
-        onPress={() => toggleExpanded(w._id)}
+        onPress={() => {
+          if (selectMode) { if (selectable) toggleSelect(w._id); }
+          else toggleExpanded(w._id);
+        }}
+        onLongPress={() => { if (!selectMode && selectable) enterSelect(w._id); }}
+        delayLongPress={300}
       >
         <View style={styles.cardTop}>
+          {/* selection checkbox (select mode only) */}
+          {selectMode && (
+            <Ionicons
+              name={!selectable ? "ban-outline" : (isSelected ? "checkbox" : "square-outline")}
+              size={22}
+              color={!selectable ? COLORS.border : (isSelected ? COLORS.button : COLORS.placeholderText)}
+              style={{ marginRight: 10 }}
+            />
+          )}
           {/* icon anchor — gives each row a visual anchor instead of plain text */}
           <View style={styles.iconBadge}>
             <Ionicons name="barbell-outline" size={18} color={COLORS.button} />
@@ -175,7 +260,7 @@ export default function History() {
             </Text>
           </View>
 
-          {!w._pending && (
+          {!selectMode && !w._pending && (
             <TouchableOpacity
               onPress={() => setMenuWorkout(w)}
               hitSlop={10}
@@ -184,12 +269,14 @@ export default function History() {
               <Ionicons name="ellipsis-vertical" size={20} color={COLORS.placeholderText} />
             </TouchableOpacity>
           )}
-          <Ionicons
-            name={isOpen ? "chevron-up" : "chevron-down"}
-            size={18}
-            color={COLORS.placeholderText}
-            style={{ marginLeft: 2 }}
-          />
+          {!selectMode && (
+            <Ionicons
+              name={isOpen ? "chevron-up" : "chevron-down"}
+              size={18}
+              color={COLORS.placeholderText}
+              style={{ marginLeft: 2 }}
+            />
+          )}
         </View>
 
         {/* glanceable summary chips (distinct per workout, so the list isn't repetitive) */}
@@ -208,19 +295,37 @@ export default function History() {
           )}
         </View>
 
-        {/* expanded detail — per-exercise set breakdown */}
-        {isOpen && (
+        {/* expanded detail — per-exercise set breakdown. When the workout used the
+            checkboxes, finished sets are ticked and unfinished ones are shown
+            struck-through (kept in the record, but they didn't count). */}
+        {isOpen && !selectMode && (
           <View style={styles.detail}>
-            {w.exercises?.map((ex, i) => (
-              <View key={i} style={styles.exerciseBlock}>
-                <Text style={styles.exerciseName}>{ex.name}</Text>
-                {ex.sets?.map((s, si) => (
-                  <Text key={si} style={styles.setLine}>
-                    Set {si + 1}: {s.reps || 0} × {showWeight(s.weightKg)} {weightUnit}
-                  </Text>
-                ))}
-              </View>
-            ))}
+            {w.exercises?.map((ex, i) => {
+              const onlyDone = countsOnlyDone(w);
+              return (
+                <View key={i} style={styles.exerciseBlock}>
+                  <Text style={styles.exerciseName}>{ex.name}</Text>
+                  {ex.sets?.map((s, si) => {
+                    const done = !!s.completed;
+                    return (
+                      <View key={si} style={{ flexDirection: "row", alignItems: "center" }}>
+                        {onlyDone && (
+                          <Ionicons
+                            name={done ? "checkmark-circle" : "ellipse-outline"}
+                            size={13}
+                            color={done ? COLORS.button : COLORS.placeholderText}
+                            style={{ marginRight: 5 }}
+                          />
+                        )}
+                        <Text style={[styles.setLine, onlyDone && !done && { textDecorationLine: "line-through", opacity: 0.5 }]}>
+                          Set {si + 1}: {s.reps || 0} × {showWeight(s.weightKg)} {weightUnit}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })}
           </View>
         )}
       </TouchableOpacity>
@@ -230,26 +335,55 @@ export default function History() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => goBack()} hitSlop={10}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.black} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Workout History</Text>
-        {/* SORT TOGGLE — newest ⇄ oldest */}
-        {workouts.length > 0 ? (
-          <TouchableOpacity
-            style={styles.sortBtn}
-            onPress={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
-            hitSlop={8}
-          >
-            <Ionicons name="swap-vertical" size={14} color={COLORS.button} />
-            <Text style={styles.sortText}>{sortDir === "desc" ? "Newest" : "Oldest"}</Text>
-          </TouchableOpacity>
+        {selectMode ? (
+          <>
+            <TouchableOpacity onPress={exitSelect} hitSlop={10}>
+              <Ionicons name="close" size={24} color={COLORS.black} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {selectedCount > 0 ? `${selectedCount} selected` : "Select workouts"}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              {selectableIds.length > 0 && (
+                <TouchableOpacity onPress={toggleSelectAll} hitSlop={8}>
+                  <Text style={styles.sortText}>{allSelected ? "Clear" : "All"}</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={confirmBulkDelete} hitSlop={8} disabled={selectedCount === 0}>
+                <Ionicons name="trash-outline" size={22} color={selectedCount === 0 ? COLORS.border : "#E24B4A"} />
+              </TouchableOpacity>
+            </View>
+          </>
         ) : (
-          <View style={{ width: 24 }} />
+          <>
+            <TouchableOpacity onPress={() => goBack()} hitSlop={10}>
+              <Ionicons name="arrow-back" size={24} color={COLORS.black} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Workout History</Text>
+            {workouts.length > 0 ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                {/* SORT TOGGLE — newest ⇄ oldest */}
+                <TouchableOpacity
+                  style={styles.sortBtn}
+                  onPress={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
+                  hitSlop={8}
+                >
+                  <Ionicons name="swap-vertical" size={14} color={COLORS.button} />
+                  <Text style={styles.sortText}>{sortDir === "desc" ? "Newest" : "Oldest"}</Text>
+                </TouchableOpacity>
+                {/* enter multi-select */}
+                <TouchableOpacity onPress={() => enterSelect(null)} hitSlop={8} accessibilityLabel="Select workouts to delete">
+                  <Ionicons name="checkmark-done-outline" size={22} color={COLORS.black} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ width: 24 }} />
+            )}
+          </>
         )}
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 8 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 8, paddingBottom: insets.bottom + 24 }}>
         {workouts.length === 0 ? (
           <Text style={styles.empty}>
             {loading ? "Loading..." : "No completed workouts yet"}

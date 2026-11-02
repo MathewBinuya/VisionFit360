@@ -1,5 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Keyboard, Platform, BackHandler, Modal } from 'react-native'
 import { showAlert } from '../components/AppAlert'
+import PressableScale from '../components/PressableScale'
+import AnimatedBar from '../components/AnimatedBar'
 import { useState, useEffect, useRef } from 'react'
 import { refreshProgressNotifications } from '../lib/notifications'
 import { router } from 'expo-router'
@@ -60,6 +62,11 @@ const emptyExercise = () => ({
 
 // strips anything that isn't a digit — also makes negative numbers impossible to type
 const sanitizeNumeric = (text) => text.replace(/[^0-9]/g, '');
+
+// How many sets across a workout the user has ticked — shown on Mark Complete,
+// and what actually gets recorded when they complete it.
+const countCheckedSets = (w) =>
+  (w?.exercises || []).reduce((n, ex) => n + (ex.sets || []).filter((s) => s.completed).length, 0);
 
 // shared validation for both Add and Edit — returns an error message string, or null if valid
 const validateExercises = (exercises) => {
@@ -155,6 +162,10 @@ export default function Workout() {
 
   //  THREE DOTS MENU STATE 
   const [menuWorkout, setMenuWorkout] = useState(null);
+
+  //  CARD EXPAND/COLLAPSE — cards start compact; tap the summary to reveal sets
+  const [expandedCards, setExpandedCards] = useState({});
+  const toggleCard = (id) => setExpandedCards((p) => ({ ...p, [id]: !p[id] }));
 
   //  EDIT MODAL STATE 
   const [showEdit, setShowEdit] = useState(false);
@@ -423,7 +434,20 @@ export default function Workout() {
   };
 
   //  COMPLETE WORKOUT (offline-capable)
+  // The whole routine is kept in history (finished + unfinished sets), with each
+  // set's "completed" flag preserved — so the program stays reusable. Only the
+  // finished (ticked) sets count toward progress/volume/PRs (filtered server-side).
   const completeWorkout = async (workout) => {
+    // Require at least one ticked set so the record clearly marks what was done
+    // (and so progress counts only finished sets, never a blank session).
+    if (countCheckedSets(workout) === 0) {
+      showAlert(
+        "Tick your finished sets",
+        "Check the sets you completed first — only ticked sets count toward your progress."
+      );
+      return;
+    }
+
     // Optimistic: the workout leaves the active list immediately, online or not.
     setWorkouts(prev => prev.filter(w => w._id !== workout._id));
     try {
@@ -445,6 +469,48 @@ export default function Workout() {
       // A real server/auth error (not connectivity). Put it back so nothing is lost.
       setWorkouts(prev => [workout, ...prev]);
       showAlert("Error", error.response?.data?.message || "Failed to complete workout");
+    }
+  };
+
+  //  TICK A SINGLE SET DONE (offline-capable)
+  // Each set on a card is a checkbox so the user can see, set by set, what they've
+  // finished. Toggling one flips its `completed` flag and saves the whole routine
+  // through the same offline-first update path the Edit screen uses.
+  const toggleSetDone = async (workout, exIdx, setIdx) => {
+    const current = workout.exercises?.[exIdx]?.sets?.[setIdx];
+    if (!current) return;
+    const nextCompleted = !current.completed;
+
+    // Full exercises payload with just this one set's flag flipped.
+    const exercises = workout.exercises.map((ex, i) => ({
+      name: ex.name,
+      sets: ex.sets.map((s, j) => ({
+        reps: Number(s.reps) || 0,
+        weightKg: Number(s.weightKg) || 0,
+        restSeconds: Number(s.restSeconds) || 60,
+        completed: i === exIdx && j === setIdx ? nextCompleted : !!s.completed,
+      })),
+    }));
+    const payload = { title: workout.title, exercises };
+
+    // Optimistic: the tick appears instantly, online or not.
+    setWorkouts(prev => prev.map(w => (w._id === workout._id ? { ...w, exercises } : w)));
+
+    try {
+      const result = await updateWorkoutOffline(user, workout, payload);
+      setWorkouts(prev => prev.map(w => (w._id === workout._id ? result.workout : w)));
+      if (result.status === "pending") {
+        setOnline(false);
+        await refreshPendingCount();
+      }
+    } catch (error) {
+      // Put the set back the way it was so the checkbox never lies.
+      setWorkouts(prev => prev.map(w => (w._id === workout._id ? workout : w)));
+      if (isOffline(error)) {
+        showAlert("Couldn't save", "We couldn't save that on your device. Please try again.");
+      } else {
+        showAlert("Error", error.response?.data?.message || "Failed to update set");
+      }
     }
   };
 
@@ -569,13 +635,18 @@ export default function Workout() {
       />
 
       {/* WORKOUT LIST */}
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}>
         {loading ? (
           <ActivityIndicator size="large" color={COLORS.button} style={{ marginTop: 40 }} />
         ) : workouts.length === 0 ? (
           <Text style={styles.empty}>No workouts yet — tap + to add one</Text>
         ) : (
-          workouts.map((w) => (
+          workouts.map((w) => {
+            const checkedSets = countCheckedSets(w);
+            const totalSets = (w.exercises || []).reduce((n, ex) => n + (ex.sets?.length || 0), 0);
+            const exCount = w.exercises?.length || 0;
+            const isOpen = !!expandedCards[w._id];
+            return (
             <View key={w._id} style={styles.workoutCard}>
               {/* card top: title + ⋮ */}
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
@@ -603,28 +674,66 @@ export default function Workout() {
                 </TouchableOpacity>
               </View>
 
-              {/* exercises */}
-              {w.exercises?.map((ex, i) => (
+              {/* compact summary — tap to reveal the sets */}
+              <TouchableOpacity
+                style={styles.cardSummary}
+                onPress={() => toggleCard(w._id)}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardSummaryText}>
+                    {exCount} exercise{exCount === 1 ? "" : "s"} · {checkedSets}/{totalSets} set{totalSets === 1 ? "" : "s"} done
+                  </Text>
+                  {/* thin progress bar (fill animates as sets are ticked) */}
+                  <AnimatedBar
+                    fraction={totalSets ? checkedSets / totalSets : 0}
+                    trackStyle={styles.progressTrack}
+                    fillStyle={styles.progressFill}
+                  />
+                </View>
+                <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={COLORS.placeholderText} />
+              </TouchableOpacity>
+
+              {/* exercises + set checkboxes — only when expanded */}
+              {isOpen && w.exercises?.map((ex, i) => (
                 <View key={i} style={styles.exerciseBlock}>
                   <Text style={styles.exerciseName}>{ex.name}</Text>
                   {ex.sets?.map((s, si) => (
-                    <Text key={si} style={styles.setLine}>
-                      Set {si + 1}: {s.reps || 0} reps × {s.weightKg || 0} kg · {s.restSeconds || 60}s rest
-                    </Text>
+                    <TouchableOpacity
+                      key={si}
+                      style={styles.setCheckRow}
+                      onPress={() => toggleSetDone(w, i, si)}
+                      hitSlop={6}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: !!s.completed }}
+                      accessibilityLabel={`Set ${si + 1}, ${s.reps || 0} reps`}
+                    >
+                      <Ionicons
+                        name={s.completed ? "checkbox" : "square-outline"}
+                        size={20}
+                        color={s.completed ? COLORS.button : COLORS.placeholderText}
+                      />
+                      <Text style={[styles.setCheckText, s.completed && styles.setCheckTextDone]}>
+                        Set {si + 1} · {s.reps || 0} × {s.weightKg || 0} kg
+                      </Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
               ))}
 
-              {/* complete button */}
-              <TouchableOpacity
-                style={styles.completeBtn}
+              {/* complete button — shows how many ticked sets will be saved */}
+              <PressableScale
+                style={[styles.completeBtn, checkedSets === 0 && { opacity: 0.6 }]}
                 onPress={() => completeWorkout(w)}
               >
                 <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.white} />
-                <Text style={styles.completeText}>Mark Complete</Text>
-              </TouchableOpacity>
+                <Text style={styles.completeText}>
+                  {checkedSets > 0 ? `Mark Complete (${checkedSets} set${checkedSets === 1 ? "" : "s"})` : "Mark Complete"}
+                </Text>
+              </PressableScale>
             </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
 
@@ -827,7 +936,7 @@ export default function Workout() {
                 ))}
 
                 {/* add exercise */}
-                <TouchableOpacity
+                <PressableScale
                   onPress={addExercise}
                   style={{
                     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -840,10 +949,10 @@ export default function Workout() {
                   <Text style={{ fontSize: 15, color: COLORS.button, fontWeight: '600' }}>
                     Add exercise
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
 
                 {/* save */}
-                <TouchableOpacity
+                <PressableScale
                   onPress={saveEdit}
                   disabled={editSaving}
                   style={{
@@ -854,7 +963,7 @@ export default function Workout() {
                   <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: '700' }}>
                     {editSaving ? 'Saving...' : 'Save changes'}
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               </View>
               </ScrollView>
             </View>
@@ -993,7 +1102,7 @@ export default function Workout() {
                 ))}
 
                 {/* add exercise */}
-                <TouchableOpacity
+                <PressableScale
                   onPress={addNewExercise}
                   style={{
                     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -1006,15 +1115,15 @@ export default function Workout() {
                   <Text style={{ fontSize: 15, color: COLORS.button, fontWeight: '600' }}>
                     Add exercise
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
 
-                <TouchableOpacity
+                <PressableScale
                   style={[styles.saveBtn, saving && { opacity: 0.6 }]}
                   onPress={saveWorkout}
                   disabled={saving}
                 >
                   <Text style={styles.saveText}>{saving ? 'Saving...' : 'Save Workout'}</Text>
-                </TouchableOpacity>
+                </PressableScale>
               </View>
               </ScrollView>
             </View>

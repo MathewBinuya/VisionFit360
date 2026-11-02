@@ -59,6 +59,15 @@ export const markAllRead = async () => { await write(READ_KEY, Date.now()); };
 
 export const clearInbox = async () => { await write(INBOX_KEY, []); };
 
+// Remove a single delivered item (long-press → delete on one notification).
+// Returns the remaining feed, newest first.
+export const removeFromInbox = async (id) => {
+  const inbox = await read(INBOX_KEY, []);
+  const next = inbox.filter((e) => e.id !== id);
+  await write(INBOX_KEY, next.sort(byNewest));
+  return next;
+};
+
 // Wipe the entire feed (delivered + planned + read marker). Used when the
 // signed-in account changes on a shared device.
 export const resetInbox = async () => {

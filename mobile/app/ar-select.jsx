@@ -8,6 +8,7 @@ import COLORS from "../constants/colors"
 import styles from '../assets/styles/arselect.style'
 import { AR_EXERCISES } from '../lib/exercises'
 import ExerciseIcon from '../components/ExerciseIcon'
+import PressableScale from '../components/PressableScale'
 import { EXERCISE_ICON_CREDIT } from '../lib/exerciseIcons'
 
 const GRID_PADDING = 16;
@@ -56,12 +57,12 @@ export default function ArSelect() {
         showsVerticalScrollIndicator
       >
         {AR_EXERCISES.map((ex) => (
-          <TouchableOpacity
+          <PressableScale
             key={ex.key}
             style={[styles.card, { width: cardWidth }, ex.working === false && { opacity: 0.5 }]}
             disabled={ex.working === false}
             onPress={() => router.push(`/repvision-guide?exercise=${ex.key}`)}
-            activeOpacity={0.8}
+            scaleTo={0.92}
           >
             <ExerciseIcon exerciseKey={ex.key} fallback={ex.icon} size={56} color={COLORS.button} />
             <Text style={styles.cardLabel} numberOfLines={1}>{ex.label}</Text>
@@ -74,7 +75,7 @@ export default function ArSelect() {
                 <Text style={styles.howText}>How to do it</Text>
               </View>
             )}
-          </TouchableOpacity>
+          </PressableScale>
         ))}
         <Text style={styles.credit}>{EXERCISE_ICON_CREDIT}</Text>
       </ScrollView>

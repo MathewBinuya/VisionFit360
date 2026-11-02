@@ -10,7 +10,7 @@ import {
   requestPermission,
   scheduleProgressNotifications,
   cancelAllNotifications,
-  sendTestNotification,
+  // sendTestNotification, // test button hidden for now
   NOTIF_SETTINGS_KEY,
   MORNING,
   EVENING,
@@ -83,11 +83,12 @@ export default function NotificationsScreen() {
           />
         </View>
 
-        {/* test button */}
+        {/* test button — hidden for now
         <TouchableOpacity style={styles.testBtn} onPress={sendTestNotification}>
           <Ionicons name="notifications-outline" size={18} color={COLORS.button} />
           <Text style={styles.testText}>Send test notification</Text>
         </TouchableOpacity>
+        */}
       </View>
     </View>
   );

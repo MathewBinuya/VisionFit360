@@ -21,12 +21,25 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 12, color: COLORS.placeholderText, fontFamily: FONT, letterSpacing: 0.3 },
   cardSub: { fontSize: 12, color: COLORS.black, fontFamily: FONT, marginTop: 4, lineHeight: 16 },
+
+  // friendlier card header: small icon + sentence-case title (replaces loud ALL-CAPS)
+  cardHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 },
+  cardHeadIcon: {
+    width: 26, height: 26, borderRadius: 8, backgroundColor: COLORS.inputBackground,
+    alignItems: "center", justifyContent: "center",
+  },
+  cardTitleText: { fontSize: 14, fontWeight: "600", color: COLORS.black, fontFamily: FONT },
   heroRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: 6, marginBottom: 14 },
   hero: { fontSize: 26, fontWeight: "600", color: COLORS.black, fontFamily: FONT },
   heroFrom: { fontSize: 15, color: COLORS.placeholderText, fontWeight: "400" },
   heroUnit: { fontSize: 13, color: COLORS.placeholderText, fontWeight: "400" },
-  changeBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: COLORS.inputBackground },
+  changeBadge: {
+    flexDirection: "row", alignItems: "center",
+    paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: COLORS.inputBackground,
+  },
   changeText: { fontSize: 12, fontWeight: "600", color: COLORS.black, fontFamily: FONT },
+  // plain-language week-over-week sentence under the hero (replaces the raw "%")
+  changeSentence: { fontSize: 12.5, color: COLORS.black, fontFamily: FONT, marginTop: -6, marginBottom: 12, lineHeight: 17 },
   caption: { fontSize: 11, color: COLORS.placeholderText, fontFamily: FONT, marginTop: 2 },
 
   chart: { flexDirection: "row", alignItems: "flex-end", height: 120, gap: 6 },
