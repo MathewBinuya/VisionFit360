@@ -14,9 +14,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   card: {
+    width: "100%", maxWidth: 480, alignSelf: "center",
     backgroundColor: COLORS.cards,
     borderRadius: 22,
-    padding: 24,
+    padding: 28,
     // soft, elevated "floating card" shadow (matches login/signup)
     shadowColor: "#1A1D24",
     shadowOffset: { width: 0, height: 16 },
@@ -25,10 +26,6 @@ const styles = StyleSheet.create({
     elevation: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginTop: -24,
-    width: "100%",
-    maxWidth: 480,
-    alignSelf: "center",
   },
   header: {
     alignItems: "center",
