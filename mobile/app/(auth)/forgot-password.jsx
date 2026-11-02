@@ -8,7 +8,15 @@ import styles from '../../assets/styles/authStyle/forgot-password.style'
 import { API_URL } from '../../lib/api'
 import FadeInView from '../../components/FadeInView'
 import PressableScale from '../../components/PressableScale'
+import StepProgress from '../../components/StepProgress'
 
+// live password-requirement row (green check once met)
+const CheckRow = ({ ok, text }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+    <Ionicons name={ok ? "checkmark-circle" : "ellipse-outline"} size={14} color={ok ? "#1D9E75" : COLORS.gray} />
+    <Text style={{ fontSize: 12, color: COLORS.gray, fontFamily: 'GeneralSans-Variable' }}>{text}</Text>
+  </View>
+);
 
 export default function ForgotPassword() {
   const [step, setStep] = useState(1);
@@ -21,6 +29,12 @@ export default function ForgotPassword() {
   const [focused, setFocused] = useState(null); // which field is focused (for highlight)
 
   const fx = (name) => [styles.inputWrap, focused === name && { borderColor: COLORS.button, borderWidth: 1.5 }];
+
+  // live new-password checks (step 2)
+  const hasMinLength = newPassword.length >= 8;
+  const hasLetter = /[a-zA-Z]/.test(newPassword);
+  const hasNumber = /[0-9]/.test(newPassword);
+  const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
  
   const requestCode = async () => {
     if (!email.trim()) return showAlert("Missing", "Please enter your email address");
@@ -85,6 +99,8 @@ export default function ForgotPassword() {
         </TouchableOpacity>
       </View>
  
+      <StepProgress current={step} total={2} />
+
       <View style={styles.titleWrap}>
         <View style={styles.iconBadge}>
           <Ionicons name={step === 1 ? "mail-open-outline" : "shield-checkmark-outline"} size={26} color={COLORS.button} />
@@ -134,7 +150,24 @@ export default function ForgotPassword() {
             <TextInput style={styles.input} placeholder="Confirm new password" placeholderTextColor={COLORS.placeholderText} value={confirmPassword} onChangeText={setConfirmPassword} onFocus={() => setFocused("confirm")} onBlur={() => setFocused(null)} secureTextEntry={!showPassword} autoCapitalize="none" />
           </View>
 
-          <Text style={styles.hint}>8+ characters, at least one letter and one number.</Text>
+          {confirmPassword.length > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+              <Ionicons name={passwordsMatch ? "checkmark-circle" : "close-circle"} size={14} color={passwordsMatch ? "#1D9E75" : "#E24B4A"} />
+              <Text style={{ fontSize: 12, color: passwordsMatch ? "#1D9E75" : "#E24B4A", fontFamily: 'GeneralSans-Variable' }}>
+                {passwordsMatch ? "Passwords match" : "Passwords don't match"}
+              </Text>
+            </View>
+          )}
+
+          {newPassword.length > 0 ? (
+            <View style={{ marginTop: 10, gap: 4 }}>
+              <CheckRow ok={hasMinLength} text="At least 8 characters" />
+              <CheckRow ok={hasLetter} text="Contains a letter" />
+              <CheckRow ok={hasNumber} text="Contains a number" />
+            </View>
+          ) : (
+            <Text style={styles.hint}>8+ characters, at least one letter and one number.</Text>
+          )}
 
           <PressableScale style={[styles.btn, loading && { opacity: 0.6 }]} onPress={resetPassword} disabled={loading}>
             {loading ? <ActivityIndicator size="small" color={COLORS.white} /> : <Text style={styles.btnText}>Reset Password</Text>}
