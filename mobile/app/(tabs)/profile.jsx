@@ -17,6 +17,7 @@ import DateField from '../../components/DateField'
 import { ageFromDob, isValidDob, formatDob, maxBirthDate, minBirthDate, MIN_AGE, MAX_AGE } from '../../lib/age'
 
 const FONT = "GeneralSans-Variable";
+const GOAL_LABELS = { get_fit: "Get Fit", maintain_weight: "Maintain Weight", get_lean: "Get Lean" };
 
 // A bordered group that holds a set of InfoRows (read-only view).
 const Card = ({ children }) => (
@@ -44,13 +45,16 @@ const InfoRow = ({ label, value, last }) => (
   </View>
 );
 
-const SectionTitle = ({ children }) => (
-  <Text style={{
-    fontSize: 12, letterSpacing: 1, color: COLORS.placeholderText, textTransform: 'uppercase',
-    fontWeight: '700', marginTop: 22, marginBottom: 8, marginLeft: 4, fontFamily: FONT,
-  }}>
-    {children}
-  </Text>
+const SectionTitle = ({ icon, children }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 22, marginBottom: 8, marginLeft: 4 }}>
+    {icon ? <Ionicons name={icon} size={13} color={COLORS.placeholderText} /> : null}
+    <Text style={{
+      fontSize: 12, letterSpacing: 1, color: COLORS.placeholderText, textTransform: 'uppercase',
+      fontWeight: '700', fontFamily: FONT,
+    }}>
+      {children}
+    </Text>
+  </View>
 );
 
 export default function Profile() {
@@ -269,6 +273,12 @@ export default function Profile() {
   const fullName = [form.firstName, form.middleName, form.lastName]
     .map((s) => (s || "").trim()).filter(Boolean).join(" ");
 
+  // BMI from the entered height/weight (same thresholds as the dashboard)
+  const hNum = Number(metricHeight), wNum = Number(metricWeight);
+  const bmiVal = hNum > 0 && wNum > 0 ? +(wNum / ((hNum / 100) ** 2)).toFixed(1) : null;
+  const bmiCat = bmiVal == null ? null
+    : bmiVal < 18.5 ? "Underweight" : bmiVal < 25 ? "Normal" : bmiVal < 30 ? "Overweight" : "Obese";
+
   const heightDisplay = heightUnit === "ft"
     ? (ftVal || inVal ? `${ftVal || 0} ft ${inVal || 0} in` : "—")
     : (metricHeight ? `${metricHeight} cm` : "—");
@@ -409,12 +419,20 @@ export default function Profile() {
           </Text>
         )}
         <Text style={styles.usernameText}>@{user?.username}</Text>
+        {!editing && user?.goal && (
+          <View style={{ marginTop: 8, backgroundColor: COLORS.button, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <Ionicons name="flag" size={12} color={COLORS.white} />
+            <Text style={{ color: COLORS.white, fontSize: 12, fontWeight: "600", fontFamily: FONT }}>
+              {GOAL_LABELS[user.goal] || user.goal}
+            </Text>
+          </View>
+        )}
       </View>
 
       {!editing ? (
         /* ---------- compact read-only view ---------- */
         <>
-          <SectionTitle>Account</SectionTitle>
+          <SectionTitle icon="person-circle-outline">Account</SectionTitle>
           <Card>
             <InfoRow label="Username" value={form.username} />
             <InfoRow label="Name" value={fullName} />
@@ -423,16 +441,17 @@ export default function Profile() {
             <InfoRow label="Bio" value={form.bio} last />
           </Card>
 
-          <SectionTitle>Body</SectionTitle>
+          <SectionTitle icon="barbell-outline">Body</SectionTitle>
           <Card>
             <InfoRow label="Height" value={metricHeight ? heightDisplay : null} />
-            <InfoRow label="Weight" value={metricWeight ? weightDisplay : null} last />
+            <InfoRow label="Weight" value={metricWeight ? weightDisplay : null} />
+            <InfoRow label="BMI" value={bmiVal != null ? `${bmiVal} · ${bmiCat}` : null} last />
           </Card>
         </>
       ) : (
         /* ---------- edit form ---------- */
         <>
-          <SectionTitle>Account</SectionTitle>
+          <SectionTitle icon="person-circle-outline">Account</SectionTitle>
 
           <Text style={styles.label}>Username</Text>
           <View style={styles.inputContainer}>
@@ -510,7 +529,7 @@ export default function Profile() {
             </View>
           )}
 
-          <SectionTitle>Body</SectionTitle>
+          <SectionTitle icon="barbell-outline">Body</SectionTitle>
 
           {/* Height */}
           <View style={styles.labelRow}>
