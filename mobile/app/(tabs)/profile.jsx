@@ -416,13 +416,13 @@ export default function Profile() {
           <Card>
             <InfoRow label="Username" value={form.username} />
             <InfoRow label="Name" value={fullName} />
+            <InfoRow label="Birthdate" value={dob ? formatDob(dob) : null} />
+            <InfoRow label="Age" value={age != null ? `${age} years old` : null} />
             <InfoRow label="Bio" value={form.bio} last />
           </Card>
 
           <SectionTitle>Body</SectionTitle>
           <Card>
-            <InfoRow label="Birthdate" value={dob ? formatDob(dob) : null} />
-            <InfoRow label="Age" value={age != null ? `${age} years old` : null} />
             <InfoRow label="Height" value={metricHeight ? heightDisplay : null} />
             <InfoRow label="Weight" value={metricWeight ? weightDisplay : null} last />
           </Card>
@@ -478,8 +478,6 @@ export default function Profile() {
             />
           </View>
 
-          <SectionTitle>Body</SectionTitle>
-
           {/* Birthdate + Age (read-only; the picker appears below if still unset) */}
           <View style={{ flexDirection: "row", gap: 10, opacity: 0.55 }}>
             <View style={{ flex: 1 }}>
@@ -509,6 +507,8 @@ export default function Profile() {
               </Text>
             </View>
           )}
+
+          <SectionTitle>Body</SectionTitle>
 
           {/* Height */}
           <View style={styles.labelRow}>
