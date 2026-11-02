@@ -86,6 +86,9 @@ export default function ForgotPassword() {
       </View>
  
       <View style={styles.titleWrap}>
+        <View style={styles.iconBadge}>
+          <Ionicons name={step === 1 ? "mail-open-outline" : "shield-checkmark-outline"} size={26} color={COLORS.button} />
+        </View>
         <Text style={styles.title}>{step === 1 ? 'Forgot Password' : 'Reset Password'}</Text>
         <Text style={styles.subtitle}>
           {step === 1 ? "Enter your email and we'll send you a reset code." : 'Enter the code from your email and set a new password.'}
