@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons"
 import COLORS from "../../constants/colors"
 import styles from '../../assets/styles/authStyle/forgot-password.style'
 import { API_URL } from '../../lib/api'
+import FadeInView from '../../components/FadeInView'
 
 
 export default function ForgotPassword() {
@@ -16,6 +17,9 @@ export default function ForgotPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(null); // which field is focused (for highlight)
+
+  const fx = (name) => [styles.inputWrap, focused === name && { borderColor: COLORS.button, borderWidth: 1.5 }];
  
   const requestCode = async () => {
     if (!email.trim()) return showAlert("Missing", "Please enter your email address");
@@ -88,11 +92,11 @@ export default function ForgotPassword() {
       </View>
  
       {step === 1 && (
-        <View style={styles.form}>
+        <FadeInView style={styles.form}>
           <Text style={styles.label}>Email Address</Text>
-          <View style={styles.inputWrap}>
-            <Ionicons name="mail-outline" size={18} color={COLORS.gray} style={styles.inputIcon} />
-            <TextInput style={styles.input} placeholder="Enter your email" placeholderTextColor={COLORS.placeholderText} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+          <View style={fx("email")}>
+            <Ionicons name="mail-outline" size={18} color={focused === "email" ? COLORS.button : COLORS.gray} style={styles.inputIcon} />
+            <TextInput style={styles.input} placeholder="Enter your email" placeholderTextColor={COLORS.placeholderText} value={email} onChangeText={setEmail} onFocus={() => setFocused("email")} onBlur={() => setFocused(null)} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
           </View>
           <TouchableOpacity style={[styles.btn, loading && { opacity: 0.6 }]} onPress={requestCode} disabled={loading}>
             {loading ? <ActivityIndicator size="small" color={COLORS.white} /> : <Text style={styles.btnText}>Send Reset Code</Text>}
@@ -100,42 +104,42 @@ export default function ForgotPassword() {
           <TouchableOpacity onPress={() => setStep(2)} style={styles.linkWrap}>
             <Text style={styles.link}>Already have a code?</Text>
           </TouchableOpacity>
-        </View>
+        </FadeInView>
       )}
  
       {step === 2 && (
-        <View style={styles.form}>
+        <FadeInView style={styles.form}>
           <Text style={styles.label}>Reset Code</Text>
-          <View style={styles.inputWrap}>
-            <Ionicons name="keypad-outline" size={18} color={COLORS.gray} style={styles.inputIcon} />
-            <TextInput style={styles.input} placeholder="6-digit code from email" placeholderTextColor={COLORS.placeholderText} value={resetCode} onChangeText={setResetCode} keyboardType="number-pad" maxLength={6} />
+          <View style={fx("code")}>
+            <Ionicons name="keypad-outline" size={18} color={focused === "code" ? COLORS.button : COLORS.gray} style={styles.inputIcon} />
+            <TextInput style={styles.input} placeholder="6-digit code from email" placeholderTextColor={COLORS.placeholderText} value={resetCode} onChangeText={setResetCode} onFocus={() => setFocused("code")} onBlur={() => setFocused(null)} keyboardType="number-pad" maxLength={6} />
           </View>
- 
+
           <Text style={styles.label}>New Password</Text>
-          <View style={styles.inputWrap}>
-            <Ionicons name="lock-closed-outline" size={18} color={COLORS.gray} style={styles.inputIcon} />
-            <TextInput style={styles.input} placeholder="New password" placeholderTextColor={COLORS.placeholderText} value={newPassword} onChangeText={setNewPassword} secureTextEntry={!showPassword} autoCapitalize="none" />
+          <View style={fx("new")}>
+            <Ionicons name="lock-closed-outline" size={18} color={focused === "new" ? COLORS.button : COLORS.gray} style={styles.inputIcon} />
+            <TextInput style={styles.input} placeholder="New password" placeholderTextColor={COLORS.placeholderText} value={newPassword} onChangeText={setNewPassword} onFocus={() => setFocused("new")} onBlur={() => setFocused(null)} secureTextEntry={!showPassword} autoCapitalize="none" />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
               <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={18} color={COLORS.gray} />
             </TouchableOpacity>
           </View>
- 
+
           <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.inputWrap}>
-            <Ionicons name="lock-closed-outline" size={18} color={COLORS.gray} style={styles.inputIcon} />
-            <TextInput style={styles.input} placeholder="Confirm new password" placeholderTextColor={COLORS.placeholderText} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry={!showPassword} autoCapitalize="none" />
+          <View style={fx("confirm")}>
+            <Ionicons name="lock-closed-outline" size={18} color={focused === "confirm" ? COLORS.button : COLORS.gray} style={styles.inputIcon} />
+            <TextInput style={styles.input} placeholder="Confirm new password" placeholderTextColor={COLORS.placeholderText} value={confirmPassword} onChangeText={setConfirmPassword} onFocus={() => setFocused("confirm")} onBlur={() => setFocused(null)} secureTextEntry={!showPassword} autoCapitalize="none" />
           </View>
- 
+
           <Text style={styles.hint}>8+ characters, at least one letter and one number.</Text>
- 
+
           <TouchableOpacity style={[styles.btn, loading && { opacity: 0.6 }]} onPress={resetPassword} disabled={loading}>
             {loading ? <ActivityIndicator size="small" color={COLORS.white} /> : <Text style={styles.btnText}>Reset Password</Text>}
           </TouchableOpacity>
- 
+
           <TouchableOpacity onPress={() => setStep(1)} style={styles.linkWrap}>
             <Text style={styles.link}>← Back to enter email</Text>
           </TouchableOpacity>
-        </View>
+        </FadeInView>
       )}
     </View>
     </ScrollView>

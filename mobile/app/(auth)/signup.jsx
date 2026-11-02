@@ -8,6 +8,7 @@ import styles from '../../assets/styles/authStyle/signup.style';
 import { isAllowedEmail, EMAIL_DOMAIN_ERROR } from '../../lib/emailValidator';
 
 import {useAuthStore} from "../../store/authStore"
+import FadeInView from '../../components/FadeInView'
 
 const TERMS_TEXT = `Welcome to VisionFIT360. By creating an account, you agree to the following:
 
@@ -33,6 +34,7 @@ const router = useRouter();
 const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const [showPassword, setShowPassword] = useState(false);
+const [focused, setFocused] = useState(null); // which field is focused (for highlight)
 const [agreedToTerms, setAgreedToTerms] = useState(false);
 const [showTerms, setShowTerms] = useState(false);
 // The agree checkbox stays locked until the user scrolls the Terms to the bottom.
@@ -127,18 +129,18 @@ const handleSignUp = async () => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
      >
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <View style={styles.card}>
+      <FadeInView style={styles.card}>
         <Text style={styles.title}>Create account</Text>
         <Text style={styles.subtitle}>Start your VisionFIT journey</Text>
         <View style={styles.formContainer}>
                   {/* Email */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Email</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons 
+          <View style={[styles.inputContainer, focused === "email" && { borderColor: COLORS.button, borderWidth: 1.5 }]}>
+            <Ionicons
               name="mail"
               size={20}
-              color={COLORS.black}
+              color={focused === "email" ? COLORS.button : COLORS.black}
               style={styles.inputIcon}
             />
             <TextInput
@@ -147,6 +149,8 @@ const handleSignUp = async () => {
               value={email}
               placeholderTextColor={COLORS.placeholderText}
               onChangeText={setEmail}
+              onFocus={() => setFocused("email")}
+              onBlur={() => setFocused(null)}
               keyboardType="email-address"
               autoCapitalize="none"
               maxLength={100}
@@ -159,11 +163,11 @@ const handleSignUp = async () => {
                {/* Password */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Password</Text>
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, focused === "password" && { borderColor: COLORS.button, borderWidth: 1.5 }]}>
             <Ionicons
               name="lock-closed"
               size={20}
-              color={COLORS.primary}
+              color={focused === "password" ? COLORS.button : COLORS.black}
               style={styles.inputIcon}
             />
             <TextInput
@@ -172,6 +176,8 @@ const handleSignUp = async () => {
               placeholderTextColor={COLORS.placeholderText}
               value={password}
               onChangeText={setPassword}
+              onFocus={() => setFocused("password")}
+              onBlur={() => setFocused(null)}
               secureTextEntry={!showPassword}
               maxLength={64}
             />
@@ -258,7 +264,7 @@ const handleSignUp = async () => {
               <Text style={styles.link}>Login</Text>
            </TouchableOpacity>
         </View>
-      </View>
+      </FadeInView>
     </ScrollView>
 
     {/*  TERMS & CONDITIONS — Modal so the dim backdrop covers the whole screen uniformly  */}

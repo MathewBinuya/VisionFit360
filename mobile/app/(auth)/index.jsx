@@ -6,6 +6,7 @@ import React, { useState } from 'react'
 import { Ionicons } from "@expo/vector-icons"
 import styles from '../../assets/styles/authStyle/login.style'
 import COLORS from '../../constants/colors'
+import FadeInView from '../../components/FadeInView'
 
 import {useAuthStore} from "../../store/authStore"
 
@@ -15,6 +16,7 @@ export default function Login() {
 const [email,setEmail] = useState("");
 const [password,setPassword] = useState("");
 const [showPassword, setShowPassword] = useState(false);
+const [focused, setFocused] = useState(null); // which field is focused (for highlight)
 
 const {isLoading, login, isCheckingAuth} = useAuthStore();
 
@@ -62,39 +64,41 @@ const handleLogin = async () => {
        />
        </View>
                {/* Login Page */}
-       <View style={styles.card}>
+       <FadeInView style={styles.card}>
         <Text style={styles.title}>Login</Text>
         <Text style={styles.subtitle}>Welcome back to VisionFIT</Text>
        <View style={styles.formContainer}>
                   {/* Email */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Email</Text>
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, focused === "email" && { borderColor: COLORS.button, borderWidth: 1.5 }]}>
               <Ionicons
                 name="mail"
                 size={20}
-                color={COLORS.black}
+                color={focused === "email" ? COLORS.button : COLORS.black}
                 style={styles.inputIcon}
               />
-              <TextInput 
+              <TextInput
                 style={styles.input}
                 placeholder="Enter your email"
                 placeholderTextColor={COLORS.placeholderText}
                 value={email}
                 onChangeText={setEmail}
+                onFocus={() => setFocused("email")}
+                onBlur={() => setFocused(null)}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-            </View> 
+            </View>
             </View>
                  {/* Password */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Password</Text>
-                 <View style={styles.inputContainer}>
-                  <Ionicons 
+                 <View style={[styles.inputContainer, focused === "password" && { borderColor: COLORS.button, borderWidth: 1.5 }]}>
+                  <Ionicons
                     name="lock-closed"
                     size={20}
-                    color={COLORS.black}
+                    color={focused === "password" ? COLORS.button : COLORS.black}
                     style={styles.inputIcon}
                   />
                   <TextInput
@@ -103,6 +107,8 @@ const handleLogin = async () => {
                     placeholderTextColor={COLORS.placeholderText}
                     value={password}
                     onChangeText={setPassword}
+                    onFocus={() => setFocused("password")}
+                    onBlur={() => setFocused(null)}
                     secureTextEntry={!showPassword}
                   />
                    <TouchableOpacity
@@ -142,7 +148,7 @@ const handleLogin = async () => {
                   </TouchableOpacity>
               </Link>
             </View>
-       </View>
+       </FadeInView>
     </ScrollView>
     </KeyboardAvoidingView>
   );
