@@ -113,7 +113,7 @@ export default function Account() {
         <View style={styles.card}>
           <StepProgress current={1} total={4} />
           <Text style={styles.title}>Set up your account</Text>
-          <Text style={[styles.subtitle, { marginBottom: 4 }]}>Your username, name and basics.</Text>
+          <Text style={[styles.subtitle, { marginBottom: 4 }]}>A few basics so we can personalize your plan.</Text>
 
           <View style={styles.formContainer}>
             {/* Username — the @handle + name shown in the app */}
@@ -132,33 +132,39 @@ export default function Account() {
               </View>
             </Field>
 
-            {/* First / Last name (required) */}
-            <Field label="First name">
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="First name"
-                  placeholderTextColor={COLORS.placeholderText}
-                  value={form.firstName}
-                  onChangeText={setField("firstName")}
-                  maxLength={40}
-                  autoCapitalize="words"
-                />
+            {/* First + Last name (required) — paired to keep the step compact */}
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Field label="First name">
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="First name"
+                      placeholderTextColor={COLORS.placeholderText}
+                      value={form.firstName}
+                      onChangeText={setField("firstName")}
+                      maxLength={40}
+                      autoCapitalize="words"
+                    />
+                  </View>
+                </Field>
               </View>
-            </Field>
-            <Field label="Last name">
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Last name"
-                  placeholderTextColor={COLORS.placeholderText}
-                  value={form.lastName}
-                  onChangeText={setField("lastName")}
-                  maxLength={40}
-                  autoCapitalize="words"
-                />
+              <View style={{ flex: 1 }}>
+                <Field label="Last name">
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Last name"
+                      placeholderTextColor={COLORS.placeholderText}
+                      value={form.lastName}
+                      onChangeText={setField("lastName")}
+                      maxLength={40}
+                      autoCapitalize="words"
+                    />
+                  </View>
+                </Field>
               </View>
-            </Field>
+            </View>
             <Field label="Middle name (optional)">
               <View style={styles.inputContainer}>
                 <TextInput
