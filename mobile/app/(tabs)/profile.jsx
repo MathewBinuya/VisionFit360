@@ -155,6 +155,13 @@ export default function Profile() {
       alert("Invalid username", "Username must be 3–30 characters: letters, numbers or underscores.");
       return;
     }
+    // first + last name are required together: enter both or neither (middle is
+    // optional). Lets older accounts still save other fields without a name.
+    const fName = form.firstName.trim(), lName = form.lastName.trim();
+    if ((fName && !lName) || (!fName && lName)) {
+      alert("Name needed", "Please enter both your first and last name.");
+      return;
+    }
     if (metricHeight) {
       const h = Number(metricHeight);
       if (isNaN(h) || h < MIN_HEIGHT_CM || h > MAX_HEIGHT_CM) {
@@ -282,12 +289,12 @@ export default function Profile() {
 
   // Real-name field: editable (settable) only while editing AND not yet locked;
   // otherwise read-only, dimmed when locked.
-  const NameRow = (label, key) => {
+  const NameRow = (label, key, optional = false) => {
     const locked = nameLocked[key];
     const canEdit = editing && !locked;
     return (
       <View key={key}>
-        <Text style={styles.label}>{label} (optional)</Text>
+        <Text style={styles.label}>{label}{optional ? " (optional)" : ""}</Text>
         {canEdit ? (
           <View style={styles.inputContainer}>
             <TextInput
@@ -388,7 +395,7 @@ export default function Profile() {
       {/* Real name — optional, set once then locked */}
       {NameRow("First name", "firstName")}
       {NameRow("Last name", "lastName")}
-      {NameRow("Middle name", "middleName")}
+      {NameRow("Middle name", "middleName", true)}
       {editing && (!nameLocked.firstName || !nameLocked.lastName || !nameLocked.middleName) && (
         <Text style={{ fontSize: 12, color: COLORS.placeholderText, marginTop: 6 }}>
           Your name can be set once. After you save, it can&apos;t be changed.

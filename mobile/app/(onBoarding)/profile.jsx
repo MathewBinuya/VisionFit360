@@ -52,9 +52,12 @@ export default function Account() {
   const setField = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
   const onUsername = (t) => setForm((f) => ({ ...f, username: t.replace(/[^a-zA-Z0-9_]/g, "") }));
 
-  // required: username (valid) + gender + date of birth. Names/bio are optional.
+  // required: username (valid) + first/last name + gender + date of birth.
+  // Middle name and bio are optional.
   const isComplete =
     USERNAME_RE.test(form.username) &&
+    form.firstName.trim() !== "" &&
+    form.lastName.trim() !== "" &&
     GENDER_OPTIONS.includes(form.gender) &&
     isValidDob(dob);
 
@@ -62,6 +65,8 @@ export default function Account() {
     if (!form.username.trim()) return "Please choose a username";
     if (!USERNAME_RE.test(form.username))
       return "Username must be 3–30 characters: letters, numbers or underscores";
+    if (!form.firstName.trim()) return "Please enter your first name";
+    if (!form.lastName.trim()) return "Please enter your last name";
     if (!GENDER_OPTIONS.includes(form.gender)) return "Please select your gender";
     if (!dob) return "Please select your date of birth";
     if (!isValidDob(dob)) return `Please enter a valid date of birth (age ${MIN_AGE}–${MAX_AGE})`;
@@ -124,8 +129,8 @@ export default function Account() {
               </View>
             </Field>
 
-            {/* First / Last name (optional) */}
-            <Field label="First name (optional)">
+            {/* First / Last name (required) */}
+            <Field label="First name">
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
@@ -138,7 +143,7 @@ export default function Account() {
                 />
               </View>
             </Field>
-            <Field label="Last name (optional)">
+            <Field label="Last name">
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
