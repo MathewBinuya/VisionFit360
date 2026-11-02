@@ -128,7 +128,8 @@ const handleSignUp = async () => {
      >
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <View style={styles.card}>
-        <Text style={styles.title}>Sign up</Text>
+        <Text style={styles.title}>Create account</Text>
+        <Text style={styles.subtitle}>Start your VisionFIT journey</Text>
         <View style={styles.formContainer}>
                   {/* Email */}
         <View style={styles.inputGroup}>

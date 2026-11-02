@@ -8,6 +8,7 @@ import api from '../../lib/axios'
 import { GOALS } from '../../lib/goals'
 import { useAlert } from '../../components/AppAlert'
 import { useAuthStore } from '../../store/authStore'
+import StepProgress from '../../components/StepProgress'
 
 export default function Goal() {
   const alert = useAlert();
@@ -35,8 +36,9 @@ export default function Goal() {
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.card}>
-        <Text style={styles.label}>4 of 4</Text>
+        <StepProgress current={4} total={4} />
         <Text style={styles.title}>{"What's your main goal?"}</Text>
+        <Text style={[styles.subtitle, { marginBottom: 4 }]}>{"We'll tailor your workouts to this."}</Text>
 
         <View style={{ marginTop: 16, marginBottom: 20 }}>
           {GOALS.map((g) => {

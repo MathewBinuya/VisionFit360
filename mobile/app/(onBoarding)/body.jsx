@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import api from '../../lib/axios';
 import { useAuthStore } from '../../store/authStore';
 import { useAlert } from '../../components/AppAlert';
+import StepProgress from '../../components/StepProgress';
 import {
   cmToFtIn, ftInToCm, kgToLb, lbToKg, cleanNumber, unitPrefKey,
   MIN_HEIGHT_CM, MAX_HEIGHT_CM, MIN_WEIGHT_KG, MAX_WEIGHT_KG,
@@ -138,8 +139,9 @@ export default function Body() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          <Text style={styles.label}>2 of 4</Text>
+          <StepProgress current={2} total={4} />
           <Text style={styles.title}>Your height & weight</Text>
+          <Text style={[styles.subtitle, { marginBottom: 4 }]}>We use these for your BMI and plans.</Text>
 
           <View style={styles.formContainer}>
             {/* Height */}

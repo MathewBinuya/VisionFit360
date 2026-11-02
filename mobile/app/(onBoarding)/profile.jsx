@@ -15,6 +15,7 @@ import api from '../../lib/axios';
 import { useAuthStore } from '../../store/authStore';
 import { useAlert } from '../../components/AppAlert';
 import DateField from '../../components/DateField';
+import StepProgress from '../../components/StepProgress';
 import { ageFromDob, isValidDob, maxBirthDate, minBirthDate, MIN_AGE, MAX_AGE } from '../../lib/age';
 
 const GENDER_OPTIONS = ["male", "female"];
@@ -109,8 +110,9 @@ export default function Account() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          <Text style={styles.label}>1 of 4</Text>
+          <StepProgress current={1} total={4} />
           <Text style={styles.title}>Set up your account</Text>
+          <Text style={[styles.subtitle, { marginBottom: 4 }]}>Your username, name and basics.</Text>
 
           <View style={styles.formContainer}>
             {/* Username — the @handle + name shown in the app */}

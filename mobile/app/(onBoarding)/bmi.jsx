@@ -11,6 +11,7 @@ import styles from '../../assets/styles/onBoardingStyle/bmi.style'
 import api from '../../lib/axios'
 import { useAuthStore } from '../../store/authStore'
 import { useAlert } from '../../components/AppAlert'
+import StepProgress from '../../components/StepProgress'
 import {
   BMI_CATEGORIES,
   categoryInfo,
@@ -69,7 +70,7 @@ export default function BMI() {
       contentContainerStyle={[styles.container, { paddingBottom: 40 }]}
     >
       <View style={styles.card}>
-        <Text style={styles.step}>3 of 4</Text>
+        <StepProgress current={3} total={4} />
         <Text style={styles.title}>Your body composition</Text>
 
         {loading ? (
