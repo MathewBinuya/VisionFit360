@@ -16,7 +16,6 @@ import {
   BMI_CATEGORIES,
   categoryInfo,
   colorForCategory,
-  BMI_INTERPRETATION,
   BMI_LIMITATIONS,
   BMI_NEUTRAL_NOTE,
 } from '../../lib/bmi'
@@ -105,37 +104,31 @@ export default function BMI() {
               </View>
             </View>
 
-            {/* standard adult reference range */}
-            <View style={styles.infoBox}>
-              <Text style={styles.infoTitle}>Adult reference range</Text>
-              {BMI_CATEGORIES.map((c) => {
-                const isCurrent = showCategory && info?.key === c.key;
-                return (
-                  <View key={c.key} style={styles.rangeRow}>
-                    <View style={styles.rangeLabelWrap}>
-                      <View style={[styles.rangeDot, { backgroundColor: c.color }]} />
-                      <Text style={[styles.rangeLabel, isCurrent && styles.rangeLabelCurrent]}>
-                        {c.label}
-                      </Text>
-                    </View>
-                    <Text style={[styles.rangeValue, isCurrent && styles.rangeLabelCurrent]}>
-                      {c.range}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* what it means + limitations */}
-            <View style={styles.infoBox}>
-              <Text style={styles.infoTitle}>What this means</Text>
-              <Text style={styles.infoText}>{BMI_INTERPRETATION}</Text>
-              <Text style={[styles.infoText, { marginTop: 10 }]}>{BMI_LIMITATIONS}</Text>
-              {!showCategory && (
-                <Text style={[styles.infoText, { marginTop: 10, fontStyle: "italic" }]}>
-                  {BMI_NEUTRAL_NOTE}
-                </Text>
-              )}
+            {/* compact BMI scale — the user's category segment is highlighted */}
+            <View style={{ marginTop: 18 }}>
+              <View style={{ flexDirection: "row", gap: 4 }}>
+                {BMI_CATEGORIES.map((c) => {
+                  const isCurrent = showCategory && info?.key === c.key;
+                  return (
+                    <View
+                      key={c.key}
+                      style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: c.color, opacity: isCurrent ? 1 : 0.22 }}
+                    />
+                  );
+                })}
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
+                <Text style={styles.rangeValue}>Underweight</Text>
+                <Text style={styles.rangeValue}>Obese</Text>
+              </View>
+              <Text style={[styles.infoText, { marginTop: 14 }]}>
+                {showCategory
+                  ? `You're in the ${(info?.label || result.category).toLowerCase()} range for your height and weight.`
+                  : BMI_NEUTRAL_NOTE}
+              </Text>
+              <Text style={[styles.infoText, { marginTop: 10, fontSize: 12, color: COLORS.placeholderText }]}>
+                {BMI_LIMITATIONS}
+              </Text>
             </View>
           </>
         ) : (
