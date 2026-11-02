@@ -1,5 +1,6 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native'
 import { router } from 'expo-router'
+import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import COLORS from "../constants/colors"
 
@@ -17,23 +18,28 @@ export default function GetStarted() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-      <Text style={styles.title}>Start your{"\n"}journey</Text>
+        <Text style={styles.brand}>VISIONFIT360</Text>
+        <Text style={styles.title}>Start your{"\n"}journey</Text>
+        <Text style={styles.subtitle}>
+          AI coaching, AR rep counting and progress tracking — in one app.
+        </Text>
 
-      <Image
-        source={require('../assets/images/new-hero-image.png')}   // your image here
-        style={[styles.image, { height: heroHeight }]}
-        resizeMode="contain"
-      />
+        <Image
+          source={require('../assets/images/new-hero-image.png')}
+          style={[styles.image, { height: heroHeight }]}
+          resizeMode="contain"
+        />
 
-      <View style={styles.buttons}>
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => go("/(auth)/signup")}>
-          <Text style={styles.primaryText}>Get started</Text>
-        </TouchableOpacity>
+        <View style={styles.buttons}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => go("/(auth)/signup")} activeOpacity={0.85}>
+            <Text style={styles.primaryText}>Get started</Text>
+            <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryBtn} onPress={() => go("/(auth)")}>
-          <Text style={styles.secondaryText}>I already have an account</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => go("/(auth)")} activeOpacity={0.85}>
+            <Text style={styles.secondaryText}>I already have an account</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -47,35 +53,61 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: "center",
   },
+  brand: {
+    fontSize: 12,
+    letterSpacing: 2,
+    fontWeight: "700",
+    color: COLORS.placeholderText,
+    textAlign: "center",
+    marginBottom: 14,
+    fontFamily: "GeneralSans-Variable",
+  },
   title: {
-    fontSize: 30,
-    fontWeight: "600",
+    fontSize: 32,
+    fontWeight: "700",
     color: COLORS.black,
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 10,
+    fontFamily: "GeneralSans-Variable",
+  },
+  subtitle: {
+    fontSize: 15,
+    lineHeight: 21,
+    color: COLORS.placeholderText,
+    textAlign: "center",
+    marginBottom: 28,
+    paddingHorizontal: 8,
     fontFamily: "GeneralSans-Variable",
   },
   image: {
     width: "100%",
     height: 240,
-    marginBottom: 36,
+    marginBottom: 32,
   },
   buttons: { gap: 12 },
   primaryBtn: {
+    flexDirection: "row",
+    gap: 8,
     backgroundColor: COLORS.button,
-    borderRadius: 12,
-    height: 52,
+    borderRadius: 14,
+    height: 54,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: COLORS.button,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
   },
   primaryText: { color: COLORS.white, fontSize: 16, fontWeight: "600", fontFamily: "GeneralSans-Variable" },
   secondaryBtn: {
-    borderRadius: 12,
-    height: 52,
+    borderRadius: 14,
+    height: 54,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
     borderColor: COLORS.border,
+    backgroundColor: COLORS.cards,
   },
   secondaryText: { color: COLORS.black, fontSize: 15, fontWeight: "600", fontFamily: "GeneralSans-Variable" },
 });
