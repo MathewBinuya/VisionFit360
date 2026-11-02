@@ -28,6 +28,15 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   header: { alignItems: "center", marginBottom: 24,},
+  brand: {
+    fontSize: 12,
+    letterSpacing: 2,
+    fontWeight: "700",
+    color: COLORS.placeholderText,
+    textAlign: "center",
+    marginBottom: 10,
+    fontFamily: "GeneralSans-Variable",
+  },
   title: {
     fontSize: 26,
     fontFamily: "GeneralSans-Variable",

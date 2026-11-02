@@ -66,8 +66,9 @@ const handleLogin = async () => {
        </View>
                {/* Login Page */}
        <FadeInView style={styles.card}>
-        <Text style={styles.title}>Login</Text>
-        <Text style={styles.subtitle}>Welcome back to VisionFIT</Text>
+        <Text style={styles.brand}>VISIONFIT360</Text>
+        <Text style={styles.title}>Welcome back</Text>
+        <Text style={styles.subtitle}>Log in to continue your journey</Text>
        <View style={styles.formContainer}>
                   {/* Email */}
         <View style={styles.inputGroup}>
@@ -125,11 +126,14 @@ const handleLogin = async () => {
                  </View>
               </View>
             </View>
-            <PressableScale style={styles.button} onPress={handleLogin} disabled={isLoading}>
+            <PressableScale style={[styles.button, { flexDirection: "row", gap: 8 }]} onPress={handleLogin} disabled={isLoading}>
                   {isLoading ? (
                       <ActivityIndicator color="#fff" />
                     ) : (
-                      <Text style={styles.buttonText}>Login</Text>
+                      <>
+                        <Text style={styles.buttonText}>Login</Text>
+                        <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
+                      </>
                     )}
             </PressableScale>
 
