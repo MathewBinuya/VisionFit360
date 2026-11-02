@@ -16,6 +16,31 @@ import {
 import DateField from '../../components/DateField'
 import { ageFromDob, isValidDob, formatDob, maxBirthDate, minBirthDate, MIN_AGE, MAX_AGE } from '../../lib/age'
 
+// Compact label/value row for the read-only view (keeps the profile short + tidy).
+const InfoRow = ({ label, value }) => (
+  <View style={{
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  }}>
+    <Text style={{ fontSize: 13, color: COLORS.placeholderText }}>{label}</Text>
+    <Text
+      style={{ fontSize: 15, color: COLORS.black, fontWeight: '600', flexShrink: 1, marginLeft: 16, textAlign: 'right' }}
+      numberOfLines={1}
+    >
+      {value || '—'}
+    </Text>
+  </View>
+);
+
+const SectionTitle = ({ children }) => (
+  <Text style={{
+    fontSize: 12, letterSpacing: 1, color: COLORS.placeholderText, textTransform: 'uppercase',
+    fontWeight: '700', marginTop: 24, marginBottom: 2,
+  }}>
+    {children}
+  </Text>
+);
+
 export default function Profile() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -61,7 +86,7 @@ export default function Profile() {
       return () => {
         if (editingRef.current) {
           setEditing(false);
-          loadProfile();   // restore saved values (drop unsaved height/weight edits)
+          loadProfile();   // restore saved values (drop unsaved edits)
         }
       };
     }, [])
@@ -221,16 +246,17 @@ export default function Profile() {
     );
   };
 
-  // leave edit mode without saving — revert any unsaved height/weight edits
+  // leave edit mode without saving — revert any unsaved edits
   const cancelEdit = async () => {
     setEditing(false);
     await loadProfile();
   };
 
-  // derived age (never stored) — shown read-only beside the birthdate
+  // derived, read-only values
   const age = ageFromDob(dob);
+  const fullName = [form.firstName, form.middleName, form.lastName]
+    .map((s) => (s || "").trim()).filter(Boolean).join(" ");
 
-  // read-only display strings (shown in view mode and for the locked fields)
   const heightDisplay = heightUnit === "ft"
     ? (ftVal || inVal ? `${ftVal || 0} ft ${inVal || 0} in` : "—")
     : (metricHeight ? `${metricHeight} cm` : "—");
@@ -287,33 +313,29 @@ export default function Profile() {
     );
   };
 
-  // Real-name field: editable (settable) only while editing AND not yet locked;
-  // otherwise read-only, dimmed when locked.
-  const NameRow = (label, key, optional = false) => {
+  // real-name input, used (and paired) only in edit mode
+  const NameInput = (key, placeholder) => {
     const locked = nameLocked[key];
-    const canEdit = editing && !locked;
+    if (locked) {
+      return (
+        <View style={{ opacity: 0.55 }}>
+          <View style={styles.readOnlyBox}>
+            <Text style={styles.readValue}>{form[key] || "—"}</Text>
+          </View>
+        </View>
+      );
+    }
     return (
-      <View key={key}>
-        <Text style={styles.label}>{label}{optional ? " (optional)" : ""}</Text>
-        {canEdit ? (
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder={label}
-              placeholderTextColor={COLORS.placeholderText}
-              value={form[key]}
-              onChangeText={(t) => setForm((f) => ({ ...f, [key]: t }))}
-              maxLength={40}
-              autoCapitalize="words"
-            />
-          </View>
-        ) : (
-          <View style={locked ? { opacity: 0.55 } : null}>
-            <View style={styles.readOnlyBox}>
-              <Text style={styles.readValue}>{form[key] || "—"}</Text>
-            </View>
-          </View>
-        )}
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor={COLORS.placeholderText}
+          value={form[key]}
+          onChangeText={(t) => setForm((f) => ({ ...f, [key]: t }))}
+          maxLength={40}
+          autoCapitalize="words"
+        />
       </View>
     );
   };
@@ -342,6 +364,8 @@ export default function Profile() {
     );
   }
 
+  const nameSettable = !nameLocked.firstName || !nameLocked.lastName || !nameLocked.middleName;
+
   return (
     <ScrollView
       style={styles.container}
@@ -350,7 +374,7 @@ export default function Profile() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.button} colors={[COLORS.button]} />
       }
     >
-      {/* Photo */}
+      {/* Photo + handle */}
       <View style={styles.avatarWrap}>
         {photo ? (
           <Image source={{ uri: photo }} style={styles.avatar} />
@@ -361,7 +385,6 @@ export default function Profile() {
             </Text>
           </View>
         )}
-        {/* photo is only changeable while editing */}
         {editing && (
           <TouchableOpacity onPress={pickAndUploadPhoto} style={styles.changePhotoBtn}>
             <Ionicons name="camera-outline" size={16} color={COLORS.button} />
@@ -371,162 +394,168 @@ export default function Profile() {
         <Text style={styles.usernameText}>@{user?.username}</Text>
       </View>
 
-      {/* Username — the @handle + "Hello, X" identity (editable, unique) */}
-      <Text style={styles.label}>Username</Text>
       {!editing ? (
-        <View style={styles.readOnlyBox}>
-          <Text style={styles.readValue}>{form.username || "—"}</Text>
-        </View>
+        /* ---------- compact read-only view ---------- */
+        <>
+          <SectionTitle>Account</SectionTitle>
+          <InfoRow label="Username" value={form.username} />
+          <InfoRow label="Name" value={fullName} />
+          <InfoRow label="Bio" value={form.bio} />
+
+          <SectionTitle>Body</SectionTitle>
+          <InfoRow label="Birthdate" value={dob ? formatDob(dob) : null} />
+          <InfoRow label="Age" value={age != null ? `${age} years old` : null} />
+          <InfoRow label="Height" value={metricHeight ? heightDisplay : null} />
+          <InfoRow label="Weight" value={metricWeight ? weightDisplay : null} />
+        </>
       ) : (
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="username"
-            placeholderTextColor={COLORS.placeholderText}
-            value={form.username}
-            onChangeText={(t) => setForm((f) => ({ ...f, username: t.replace(/[^a-zA-Z0-9_]/g, "") }))}
-            maxLength={30}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-      )}
+        /* ---------- edit form ---------- */
+        <>
+          <SectionTitle>Account</SectionTitle>
 
-      {/* Real name — optional, set once then locked */}
-      {NameRow("First name", "firstName")}
-      {NameRow("Last name", "lastName")}
-      {NameRow("Middle name", "middleName", true)}
-      {editing && (!nameLocked.firstName || !nameLocked.lastName || !nameLocked.middleName) && (
-        <Text style={{ fontSize: 12, color: COLORS.placeholderText, marginTop: 6 }}>
-          Your name can be set once. After you save, it can&apos;t be changed.
-        </Text>
-      )}
-
-      {/* Bio */}
-      <Text style={styles.label}>Bio</Text>
-      {!editing ? (
-        <View style={styles.readOnlyBox}>
-          <Text style={styles.readValue}>{form.bio || "—"}</Text>
-        </View>
-      ) : (
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.bioInput}
-            placeholder="Tell us a bit about yourself"
-            placeholderTextColor={COLORS.placeholderText}
-            value={form.bio}
-            onChangeText={(t) => setForm((f) => ({ ...f, bio: t }))}
-            maxLength={160}
-            multiline
-          />
-        </View>
-      )}
-
-      {/* Birthdate + Age — read-only once set, stacked (birthdate first, age under
-          it) for a cleaner, more professional read. Accounts without a DOB (older
-          users) can set it once while editing; after saving it stays fixed. */}
-      <Text style={styles.label}>Birthdate</Text>
-      {/* dimmed slightly to read as non-editable info */}
-      <View style={{ opacity: 0.55 }}>
-        <View style={styles.readOnlyBox}>
-          <Text style={styles.readValue}>{dob ? formatDob(dob) : "—"}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.label}>Age</Text>
-      <View style={{ opacity: 0.55 }}>
-        <View style={styles.readOnlyBox}>
-          <Text style={styles.readValue}>{age != null ? `${age} years old` : "—"}</Text>
-        </View>
-      </View>
-      {editing && !dobLocked && (
-        <View style={{ marginTop: 10 }}>
-          <DateField
-            value={dob}
-            onChange={setDob}
-            placeholder="Select your date of birth"
-            maximumDate={maxBirthDate()}
-            minimumDate={minBirthDate()}
-          />
-          <Text style={{ fontSize: 12, color: COLORS.placeholderText, marginTop: 6 }}>
-            You can set this once. After you save, it can&apos;t be changed.
-          </Text>
-        </View>
-      )}
-
-      {/* Height */}
-      <View style={styles.labelRow}>
-        <Text style={styles.label}>Height</Text>
-        {editing && <UnitToggle units={["cm", "ft"]} active={heightUnit} onPick={toggleHeightUnit} />}
-      </View>
-      {!editing ? (
-        <View style={styles.readOnlyBox}>
-          <Text style={styles.readValue}>{heightDisplay}</Text>
-        </View>
-      ) : heightUnit === "cm" ? (
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="175"
-            placeholderTextColor={COLORS.placeholderText}
-            value={metricHeight}
-            onChangeText={onHeightCm}
-            keyboardType="numeric"
-            maxLength={3}
-          />
-          <Text style={styles.unitSuffix}>cm</Text>
-        </View>
-      ) : (
-        <View style={styles.row}>
-          <View style={[styles.inputRow, { flex: 1 }]}>
+          <Text style={styles.label}>Username</Text>
+          <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="5"
+              placeholder="username"
               placeholderTextColor={COLORS.placeholderText}
-              value={ftVal}
-              onChangeText={onFt}
-              keyboardType="numeric"
-              maxLength={1}
+              value={form.username}
+              onChangeText={(t) => setForm((f) => ({ ...f, username: t.replace(/[^a-zA-Z0-9_]/g, "") }))}
+              maxLength={30}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
-            <Text style={styles.unitSuffix}>ft</Text>
           </View>
-          <View style={[styles.inputRow, { flex: 1 }]}>
+
+          {/* First + Last paired */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>First name</Text>
+              {NameInput("firstName", "First name")}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Last name</Text>
+              {NameInput("lastName", "Last name")}
+            </View>
+          </View>
+          <Text style={styles.label}>Middle name (optional)</Text>
+          {NameInput("middleName", "Middle name")}
+          {nameSettable && (
+            <Text style={{ fontSize: 12, color: COLORS.placeholderText, marginTop: 6 }}>
+              Your name can be set once. After you save, it can&apos;t be changed.
+            </Text>
+          )}
+
+          <Text style={styles.label}>Bio</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.bioInput}
+              placeholder="Tell us a bit about yourself"
+              placeholderTextColor={COLORS.placeholderText}
+              value={form.bio}
+              onChangeText={(t) => setForm((f) => ({ ...f, bio: t }))}
+              maxLength={160}
+              multiline
+            />
+          </View>
+
+          <SectionTitle>Body</SectionTitle>
+
+          {/* Birthdate + Age (read-only; the picker appears below if still unset) */}
+          <View style={{ flexDirection: "row", gap: 10, opacity: 0.55 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Birthdate</Text>
+              <View style={styles.readOnlyBox}>
+                <Text style={styles.readValue}>{dob ? formatDob(dob) : "—"}</Text>
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Age</Text>
+              <View style={styles.readOnlyBox}>
+                <Text style={styles.readValue}>{age != null ? `${age} years old` : "—"}</Text>
+              </View>
+            </View>
+          </View>
+          {!dobLocked && (
+            <View style={{ marginTop: 10 }}>
+              <DateField
+                value={dob}
+                onChange={setDob}
+                placeholder="Select your date of birth"
+                maximumDate={maxBirthDate()}
+                minimumDate={minBirthDate()}
+              />
+              <Text style={{ fontSize: 12, color: COLORS.placeholderText, marginTop: 6 }}>
+                You can set this once. After you save, it can&apos;t be changed.
+              </Text>
+            </View>
+          )}
+
+          {/* Height */}
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Height</Text>
+            <UnitToggle units={["cm", "ft"]} active={heightUnit} onPick={toggleHeightUnit} />
+          </View>
+          {heightUnit === "cm" ? (
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.input}
+                placeholder="175"
+                placeholderTextColor={COLORS.placeholderText}
+                value={metricHeight}
+                onChangeText={onHeightCm}
+                keyboardType="numeric"
+                maxLength={3}
+              />
+              <Text style={styles.unitSuffix}>cm</Text>
+            </View>
+          ) : (
+            <View style={styles.row}>
+              <View style={[styles.inputRow, { flex: 1 }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="5"
+                  placeholderTextColor={COLORS.placeholderText}
+                  value={ftVal}
+                  onChangeText={onFt}
+                  keyboardType="numeric"
+                  maxLength={1}
+                />
+                <Text style={styles.unitSuffix}>ft</Text>
+              </View>
+              <View style={[styles.inputRow, { flex: 1 }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="9"
+                  placeholderTextColor={COLORS.placeholderText}
+                  value={inVal}
+                  onChangeText={onIn}
+                  keyboardType="numeric"
+                  maxLength={2}
+                />
+                <Text style={styles.unitSuffix}>in</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Weight */}
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Weight</Text>
+            <UnitToggle units={["kg", "lb"]} active={weightUnit} onPick={toggleWeightUnit} />
+          </View>
+          <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
-              placeholder="9"
+              placeholder={weightUnit === "kg" ? "70" : "154"}
               placeholderTextColor={COLORS.placeholderText}
-              value={inVal}
-              onChangeText={onIn}
+              value={weightUnit === "kg" ? metricWeight : lbVal}
+              onChangeText={weightUnit === "kg" ? onWeightKg : onLb}
               keyboardType="numeric"
-              maxLength={2}
+              maxLength={6}
             />
-            <Text style={styles.unitSuffix}>in</Text>
+            <Text style={styles.unitSuffix}>{weightUnit}</Text>
           </View>
-        </View>
-      )}
-
-      {/* Weight */}
-      <View style={styles.labelRow}>
-        <Text style={styles.label}>Weight</Text>
-        {editing && <UnitToggle units={["kg", "lb"]} active={weightUnit} onPick={toggleWeightUnit} />}
-      </View>
-      {!editing ? (
-        <View style={styles.readOnlyBox}>
-          <Text style={styles.readValue}>{weightDisplay}</Text>
-        </View>
-      ) : (
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            placeholder={weightUnit === "kg" ? "70" : "154"}
-            placeholderTextColor={COLORS.placeholderText}
-            value={weightUnit === "kg" ? metricWeight : lbVal}
-            onChangeText={weightUnit === "kg" ? onWeightKg : onLb}
-            keyboardType="numeric"
-            maxLength={6}
-          />
-          <Text style={styles.unitSuffix}>{weightUnit}</Text>
-        </View>
+        </>
       )}
 
       {editing ? (
@@ -543,7 +572,7 @@ export default function Profile() {
           </TouchableOpacity>
         </>
       ) : (
-        <TouchableOpacity style={[styles.saveBtn, { flexDirection: "row" }]} onPress={confirmEdit}>
+        <TouchableOpacity style={[styles.saveBtn, { flexDirection: "row", marginTop: 24 }]} onPress={confirmEdit}>
           <Ionicons name="create-outline" size={18} color={COLORS.white} />
           <Text style={[styles.saveText, { marginLeft: 6 }]}>Edit Profile</Text>
         </TouchableOpacity>
