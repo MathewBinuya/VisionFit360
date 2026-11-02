@@ -105,6 +105,8 @@ const GENDER_GUIDANCE = {
     "Gender: female. You may lean slightly toward lower-body/glute and full-body work that many women commonly prefer, but still include upper-body strength. Do NOT reduce weights, volume or difficulty because of gender.",
   male:
     "Gender: male. You may lean slightly toward upper-body strength work that many men commonly prefer, but still include lower body and core. Do NOT increase weights, volume or difficulty because of gender.",
+  // "other" is no longer selectable (removed from the user/admin modules); kept
+  // only so any legacy account still holding it gets sensible, neutral guidance.
   other: "Gender: other — no gender-based emphasis.",
 };
 

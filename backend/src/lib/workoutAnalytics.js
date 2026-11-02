@@ -18,12 +18,25 @@ const dayToISODate = (day) => new Date(day * DAY_MS).toISOString().slice(0, 10);
 
 const whenOf = (w) => new Date(w.completedAt || w.date || w.createdAt);
 
-// Same formula the app already uses everywhere: Σ reps × weightKg over every set.
-export const workoutVolume = (w) =>
-  (w.exercises || []).reduce(
-    (sum, ex) => sum + (ex.sets || []).reduce((s, set) => s + (set.reps || 0) * (set.weightKg || 0), 0),
+// Which sets of a workout count toward progress. A workout logged with the
+// per-set checkboxes has at least one set flagged completed — for those we count
+// ONLY the finished sets (the rest of the program is kept in history but doesn't
+// count). Older workouts (completed before checkboxes existed) have no finished
+// flags at all, so we count every set, exactly as before — existing history,
+// volume and PRs never change.
+const setCounts = (w) =>
+  (w.exercises || []).some((ex) => (ex.sets || []).some((s) => s.completed))
+    ? (s) => !!s.completed
+    : () => true;
+
+// Σ reps × weightKg over the counted sets (see setCounts).
+export const workoutVolume = (w) => {
+  const counts = setCounts(w);
+  return (w.exercises || []).reduce(
+    (sum, ex) => sum + (ex.sets || []).reduce((s, set) => s + (counts(set) ? (set.reps || 0) * (set.weightKg || 0) : 0), 0),
     0
   );
+};
 
 const round1 = (n) => Math.round(n * 10) / 10;
 const pctChange = (cur, prev) => (prev > 0 ? round1(((cur - prev) / prev) * 100) : null);
@@ -54,11 +67,13 @@ const buildRecords = (workouts) => {
 
   for (const w of sorted) {
     const date = whenOf(w);
+    const counts = setCounts(w); // only finished sets count (legacy: all sets)
     const perSession = new Map();
     for (const ex of w.exercises || []) {
       const key = exerciseKey(ex.name);
       if (!key) continue;
       for (const s of ex.sets || []) {
+        if (!counts(s)) continue;
         if (!(s.reps > 0 && s.weightKg > 0)) continue;
         const cur = perSession.get(key);
         if (!cur || s.weightKg > cur.topKg || (s.weightKg === cur.topKg && s.reps > cur.topReps)) {
