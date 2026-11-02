@@ -22,7 +22,9 @@ export default function Profile() {
   const logout = useAuthStore((s) => s.logout);
   const alert = useAlert();
 
-  const [form, setForm] = useState({ name: "", bio: "" });
+  const [form, setForm] = useState({ username: "", bio: "", firstName: "", lastName: "", middleName: "" });
+  // which real-name fields are already set on the server (locked / read-only)
+  const [nameLocked, setNameLocked] = useState({ firstName: false, lastName: false, middleName: false });
   const [photo, setPhoto] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -30,6 +32,7 @@ export default function Profile() {
   const [editing, setEditing] = useState(false); // read-only until "Edit Profile" is tapped
   const editingRef = useRef(false);
   useEffect(() => { editingRef.current = editing; }, [editing]);
+  const origUsernameRef = useRef(""); // the username as loaded, to detect real changes
 
   // canonical metric values (what we send)
   const [metricHeight, setMetricHeight] = useState("");
@@ -84,7 +87,19 @@ export default function Profile() {
       const res = await api.get("/profile");
       const h = res.data.heightCm?.toString() || "";
       const w = res.data.weightKg?.toString() || "";
-      setForm({ name: res.data.name || "", bio: res.data.bio || "" });
+      setForm({
+        username: res.data.username || "",
+        bio: res.data.bio || "",
+        firstName: res.data.firstName || "",
+        lastName: res.data.lastName || "",
+        middleName: res.data.middleName || "",
+      });
+      setNameLocked({
+        firstName: !!res.data.firstName,
+        lastName: !!res.data.lastName,
+        middleName: !!res.data.middleName,
+      });
+      origUsernameRef.current = res.data.username || "";
       setMetricHeight(h);
       setMetricWeight(w);
       setDob(res.data.dateOfBirth ? new Date(res.data.dateOfBirth) : null);
@@ -132,9 +147,12 @@ export default function Profile() {
   };
 
   const saveProfile = async () => {
-    const trimmedName = form.name.trim();
-    if (trimmedName && !/^[a-zA-Z\s]+$/.test(trimmedName)) {
-      alert("Invalid name", "Name can only contain letters and spaces.");
+    const uname = form.username.trim();
+    // only validate/send the username when it actually changed, so an older
+    // account with a legacy-format handle isn't blocked from saving other fields
+    const usernameChanged = uname !== (origUsernameRef.current || "");
+    if (usernameChanged && !/^[a-zA-Z0-9_]{3,30}$/.test(uname)) {
+      alert("Invalid username", "Username must be 3–30 characters: letters, numbers or underscores.");
       return;
     }
     if (metricHeight) {
@@ -159,11 +177,15 @@ export default function Profile() {
     }
     setSaving(true);
     try {
-      // gender is omitted (set at onboarding). dateOfBirth is set-once: sent only
-      // when the account doesn't have one yet; the backend also enforces the lock.
+      // gender/goal omitted (set at onboarding). Username is editable + unique.
+      // dateOfBirth and the real-name fields are set-once: a field is only sent
+      // while still unset; the backend enforces the lock too.
       await api.put("/profile", {
-        name: trimmedName,
+        username: usernameChanged ? uname : undefined,
         bio: form.bio,
+        firstName: !nameLocked.firstName ? form.firstName.trim() : undefined,
+        lastName: !nameLocked.lastName ? form.lastName.trim() : undefined,
+        middleName: !nameLocked.middleName ? form.middleName.trim() : undefined,
         dateOfBirth: settingDob ? dob.toISOString() : undefined,
         heightCm: metricHeight ? Number(metricHeight) : undefined,
         weightKg: metricWeight ? Number(metricWeight) : undefined,
@@ -258,6 +280,37 @@ export default function Profile() {
     );
   };
 
+  // Real-name field: editable (settable) only while editing AND not yet locked;
+  // otherwise read-only, dimmed when locked.
+  const NameRow = (label, key) => {
+    const locked = nameLocked[key];
+    const canEdit = editing && !locked;
+    return (
+      <View key={key}>
+        <Text style={styles.label}>{label} (optional)</Text>
+        {canEdit ? (
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder={label}
+              placeholderTextColor={COLORS.placeholderText}
+              value={form[key]}
+              onChangeText={(t) => setForm((f) => ({ ...f, [key]: t }))}
+              maxLength={40}
+              autoCapitalize="words"
+            />
+          </View>
+        ) : (
+          <View style={locked ? { opacity: 0.55 } : null}>
+            <View style={styles.readOnlyBox}>
+              <Text style={styles.readValue}>{form[key] || "—"}</Text>
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const UnitToggle = ({ units, active, onPick }) => (
     <View style={styles.unitToggle}>
       {units.map((u) => (
@@ -297,7 +350,7 @@ export default function Profile() {
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder]}>
             <Text style={styles.avatarInitials}>
-              {form.name ? form.name.charAt(0).toUpperCase() : (user?.username?.charAt(0).toUpperCase() || "?")}
+              {user?.username?.charAt(0).toUpperCase() || "?"}
             </Text>
           </View>
         )}
@@ -308,27 +361,38 @@ export default function Profile() {
             <Text style={styles.changePhotoText}>Change photo</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.usernameText}>@{user?.name || user?.username}</Text>
+        <Text style={styles.usernameText}>@{user?.username}</Text>
       </View>
 
-      {/* Name */}
-      <Text style={styles.label}>Name</Text>
+      {/* Username — the @handle + "Hello, X" identity (editable, unique) */}
+      <Text style={styles.label}>Username</Text>
       {!editing ? (
         <View style={styles.readOnlyBox}>
-          <Text style={styles.readValue}>{form.name || "—"}</Text>
+          <Text style={styles.readValue}>{form.username || "—"}</Text>
         </View>
       ) : (
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Your name"
+            placeholder="username"
             placeholderTextColor={COLORS.placeholderText}
-            value={form.name}
-            onChangeText={(t) => setForm((f) => ({ ...f, name: t }))}
-            maxLength={50}
-            autoCapitalize="words"
+            value={form.username}
+            onChangeText={(t) => setForm((f) => ({ ...f, username: t.replace(/[^a-zA-Z0-9_]/g, "") }))}
+            maxLength={30}
+            autoCapitalize="none"
+            autoCorrect={false}
           />
         </View>
+      )}
+
+      {/* Real name — optional, set once then locked */}
+      {NameRow("First name", "firstName")}
+      {NameRow("Last name", "lastName")}
+      {NameRow("Middle name", "middleName")}
+      {editing && (!nameLocked.firstName || !nameLocked.lastName || !nameLocked.middleName) && (
+        <Text style={{ fontSize: 12, color: COLORS.placeholderText, marginTop: 6 }}>
+          Your name can be set once. After you save, it can&apos;t be changed.
+        </Text>
       )}
 
       {/* Bio */}
@@ -351,20 +415,21 @@ export default function Profile() {
         </View>
       )}
 
-      {/* Birthdate + Age — read-only once set. Accounts without a DOB (older users)
-          can set it once while editing; after saving it stays fixed. */}
-      <Text style={styles.label}>Birthdate &amp; age</Text>
+      {/* Birthdate + Age — read-only once set, stacked (birthdate first, age under
+          it) for a cleaner, more professional read. Accounts without a DOB (older
+          users) can set it once while editing; after saving it stays fixed. */}
+      <Text style={styles.label}>Birthdate</Text>
       {/* dimmed slightly to read as non-editable info */}
-      <View style={{ flexDirection: "row", gap: 10, opacity: 0.55 }}>
-        <View style={{ flex: 1 }}>
-          <View style={styles.readOnlyBox}>
-            <Text style={styles.readValue}>{dob ? formatDob(dob) : "—"}</Text>
-          </View>
+      <View style={{ opacity: 0.55 }}>
+        <View style={styles.readOnlyBox}>
+          <Text style={styles.readValue}>{dob ? formatDob(dob) : "—"}</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <View style={styles.readOnlyBox}>
-            <Text style={styles.readValue}>{age != null ? `${age} years old` : "—"}</Text>
-          </View>
+      </View>
+
+      <Text style={styles.label}>Age</Text>
+      <View style={{ opacity: 0.55 }}>
+        <View style={styles.readOnlyBox}>
+          <Text style={styles.readValue}>{age != null ? `${age} years old` : "—"}</Text>
         </View>
       </View>
       {editing && !dobLocked && (

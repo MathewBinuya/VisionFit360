@@ -8,177 +8,90 @@ import { View,
          Platform,
         } from 'react-native'
 import { useState, useEffect } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import COLORS from "../../constants/colors"
 import styles from '../../assets/styles/onBoardingStyle/profile.style';
 import { router } from "expo-router";
 import api from '../../lib/axios';
 import { useAuthStore } from '../../store/authStore';
 import { useAlert } from '../../components/AppAlert';
-import {
-  cmToFtIn, ftInToCm, kgToLb, lbToKg, cleanNumber, unitPrefKey,
-  MIN_HEIGHT_CM, MAX_HEIGHT_CM, MIN_WEIGHT_KG, MAX_WEIGHT_KG,
-} from '../../lib/units';
 import DateField from '../../components/DateField';
 import { ageFromDob, isValidDob, maxBirthDate, minBirthDate, MIN_AGE, MAX_AGE } from '../../lib/age';
 
+const GENDER_OPTIONS = ["male", "female"];
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/;
 
-const GENDER_OPTIONS = ["male", "female", "other"];
+// Module-scope so its identity is stable across renders (a component defined
+// inside Account would remount every keystroke and drop the input's focus).
+const Field = ({ label, children, hint }) => (
+  <View style={styles.inputGroup}>
+    <View style={styles.labelRow}>
+      <Text style={styles.label}>{label}</Text>
+      {hint ? <Text style={styles.unitSuffix}>{hint}</Text> : null}
+    </View>
+    {children}
+  </View>
+);
 
-export default function Profile() {
+export default function Account() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const alert = useAlert();
 
-  const [form, setForm] = useState({ name: "", bio: "", gender: "" });
+  const [form, setForm] = useState({
+    username: "", firstName: "", lastName: "", middleName: "", bio: "", gender: "",
+  });
   const [dob, setDob] = useState(null); // date of birth (we store DOB, derive age)
   const [isSaving, setIsSaving] = useState(false);
 
-  // canonical metric values (what we send) — strings so inputs stay controlled
-  const [metricHeight, setMetricHeight] = useState("");
-  const [metricWeight, setMetricWeight] = useState("");
-
-  // display units + the per-unit input fields
-  const [heightUnit, setHeightUnit] = useState("cm"); // 'cm' | 'ft'
-  const [weightUnit, setWeightUnit] = useState("kg"); // 'kg' | 'lb'
-  const [ftVal, setFtVal] = useState("");
-  const [inVal, setInVal] = useState("");
-  const [lbVal, setLbVal] = useState("");
-
-  // Pre-fill the display name with the username they chose at signup, so they
-  // don't have to type their name again here. It stays fully editable — they can
-  // change it to a different display name before continuing.
+  // Pre-fill the username with any handle the account already has (e.g. an older
+  // account). Blank for brand-new accounts — they choose one here.
   useEffect(() => {
-    const chosen = user?.name || user?.username;
-    if (chosen) setForm((f) => (f.name.trim() ? f : { ...f, name: chosen }));
-  }, [user?.name, user?.username]);
+    if (user?.username) setForm((f) => (f.username ? f : { ...f, username: user.username }));
+  }, [user?.username]);
 
-  // restore the user's saved unit preference
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(unitPrefKey(user?.id));
-        if (raw) {
-          const p = JSON.parse(raw);
-          if (p.height === "ft" || p.height === "cm") setHeightUnit(p.height);
-          if (p.weight === "lb" || p.weight === "kg") setWeightUnit(p.weight);
-        }
-      } catch (_e) {}
-    })();
-  }, [user?.id]);
+  const setField = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
+  const onUsername = (t) => setForm((f) => ({ ...f, username: t.replace(/[^a-zA-Z0-9_]/g, "") }));
 
-  const savePref = async (height, weight) => {
-    try {
-      await AsyncStorage.setItem(unitPrefKey(user?.id), JSON.stringify({ height, weight }));
-    } catch (_e) {}
-  };
-
-  // name/bio/gender/dob/height/weight are all needed to continue
+  // required: username (valid) + gender + date of birth. Names/bio are optional.
   const isComplete =
-    form.name.trim() !== "" &&
-    form.bio.trim() !== "" &&
+    USERNAME_RE.test(form.username) &&
     GENDER_OPTIONS.includes(form.gender) &&
-    isValidDob(dob) &&
-    metricHeight !== "" &&
-    metricWeight !== "";
+    isValidDob(dob);
 
   const validate = () => {
-    if (!form.name.trim()) return "Please enter your name";
-    if (!form.bio.trim()) return "Please tell us a little about yourself";
+    if (!form.username.trim()) return "Please choose a username";
+    if (!USERNAME_RE.test(form.username))
+      return "Username must be 3–30 characters: letters, numbers or underscores";
     if (!GENDER_OPTIONS.includes(form.gender)) return "Please select your gender";
     if (!dob) return "Please select your date of birth";
     if (!isValidDob(dob)) return `Please enter a valid date of birth (age ${MIN_AGE}–${MAX_AGE})`;
-    if (!metricHeight) return "Please enter your height";
-    const h = Number(metricHeight);
-    if (isNaN(h) || h < MIN_HEIGHT_CM || h > MAX_HEIGHT_CM)
-      return `Please enter a valid height (${MIN_HEIGHT_CM}–${MAX_HEIGHT_CM} cm)`;
-    if (!metricWeight) return "Please enter your weight";
-    const w = Number(metricWeight);
-    if (isNaN(w) || w < MIN_WEIGHT_KG || w > MAX_WEIGHT_KG)
-      return `Please enter a valid weight (${MIN_WEIGHT_KG}–${MAX_WEIGHT_KG} kg)`;
     return null;
-  };
-
-  // --- height handlers ---
-  const onHeightCm = (t) => setMetricHeight(cleanNumber(t));
-  const onFt = (t) => {
-    const v = cleanNumber(t);
-    setFtVal(v);
-    setMetricHeight(ftInToCm(v, inVal));
-  };
-  const onIn = (t) => {
-    const v = cleanNumber(t);
-    setInVal(v);
-    setMetricHeight(ftInToCm(ftVal, v));
-  };
-  const toggleHeightUnit = (u) => {
-    if (u === heightUnit) return;
-    if (u === "ft") {
-      const { ft, in: inch } = cmToFtIn(metricHeight);
-      setFtVal(ft); setInVal(inch);
-    }
-    // switching to cm keeps metricHeight as-is (canonical)
-    setHeightUnit(u);
-    savePref(u, weightUnit);
-  };
-
-  // --- weight handlers ---
-  const onWeightKg = (t) => setMetricWeight(cleanNumber(t, true));
-  const onLb = (t) => {
-    const v = cleanNumber(t, true);
-    setLbVal(v);
-    setMetricWeight(lbToKg(v));
-  };
-  const toggleWeightUnit = (u) => {
-    if (u === weightUnit) return;
-    if (u === "lb") setLbVal(kgToLb(metricWeight));
-    setWeightUnit(u);
-    savePref(heightUnit, u);
   };
 
   const handleContinue = async () => {
     const error = validate();
-    if (error) {
-      alert("Hold on", error);
-      return;
-    }
+    if (error) { alert("Hold on", error); return; }
 
     setIsSaving(true);
     try {
       const res = await api.put("/profile", {
-        name: form.name.trim(),
+        username: form.username.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        middleName: form.middleName.trim(),
         bio: form.bio.trim(),
-        gender: form.gender, // required
+        gender: form.gender,
         dateOfBirth: dob.toISOString(),
-        heightCm: Number(metricHeight),
-        weightKg: Number(metricWeight),
       });
-      // refresh the local user so the next onboarding steps (BMI age check) and
-      // the dashboard greeting/avatar reflect what was just entered.
+      // refresh the local user so later steps + the dashboard reflect the entries
       if (res?.data) await setUser(res.data);
-      router.push("/(onBoarding)/goal");
+      router.push("/(onBoarding)/body");
     } catch (error) {
       alert("Error", error.response?.data?.message || "Failed to save");
     } finally {
       setIsSaving(false);
     }
   };
-
-  const UnitToggle = ({ units, active, onPick }) => (
-    <View style={styles.unitToggle}>
-      {units.map((u) => (
-        <TouchableOpacity
-          key={u}
-          style={[styles.unitPill, active === u && styles.unitPillActive]}
-          onPress={() => onPick(u)}
-        >
-          <Text style={[styles.unitText, active === u && styles.unitTextActive]}>
-            {u === "ft" ? "ft/in" : u}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
 
   return (
     <KeyboardAvoidingView
@@ -191,43 +104,69 @@ export default function Profile() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          <Text style={styles.label}>1 of 3</Text>
-          <Text style={styles.title}>Tell us about yourself</Text>
+          <Text style={styles.label}>1 of 4</Text>
+          <Text style={styles.title}>Set up your account</Text>
 
           <View style={styles.formContainer}>
-            {/* Name */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Name</Text>
+            {/* Username — the @handle + name shown in the app */}
+            <Field label="Username" hint="your @handle">
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Name"
+                  placeholder="e.g. john_doe"
                   placeholderTextColor={COLORS.placeholderText}
-                  value={form.name}
-                  onChangeText={(t) => setForm({ ...form, name: t })}
-                  maxLength={50}
+                  value={form.username}
+                  onChangeText={onUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={30}
                 />
               </View>
-            </View>
+            </Field>
 
-            {/* Bio */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Bio</Text>
+            {/* First / Last name (optional) */}
+            <Field label="First name (optional)">
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
-                  placeholder="About you"
+                  placeholder="First name"
                   placeholderTextColor={COLORS.placeholderText}
-                  value={form.bio}
-                  onChangeText={(t) => setForm({ ...form, bio: t })}
-                  maxLength={150}
+                  value={form.firstName}
+                  onChangeText={setField("firstName")}
+                  maxLength={40}
+                  autoCapitalize="words"
                 />
               </View>
-            </View>
+            </Field>
+            <Field label="Last name (optional)">
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Last name"
+                  placeholderTextColor={COLORS.placeholderText}
+                  value={form.lastName}
+                  onChangeText={setField("lastName")}
+                  maxLength={40}
+                  autoCapitalize="words"
+                />
+              </View>
+            </Field>
+            <Field label="Middle name (optional)">
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Middle name"
+                  placeholderTextColor={COLORS.placeholderText}
+                  value={form.middleName}
+                  onChangeText={setField("middleName")}
+                  maxLength={40}
+                  autoCapitalize="words"
+                />
+              </View>
+            </Field>
 
             {/* Gender (required) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Gender</Text>
+            <Field label="Gender">
               <View style={styles.genderRow}>
                 {GENDER_OPTIONS.map((option) => (
                   <TouchableOpacity
@@ -241,16 +180,10 @@ export default function Profile() {
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
+            </Field>
 
             {/* Date of birth (required) — drives age-appropriate AI recommendations */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Date of birth</Text>
-                {dob && isValidDob(dob) && (
-                  <Text style={styles.unitSuffix}>Age {ageFromDob(dob)}</Text>
-                )}
-              </View>
+            <Field label="Date of birth" hint={dob && isValidDob(dob) ? `Age ${ageFromDob(dob)}` : null}>
               <DateField
                 value={dob}
                 onChange={setDob}
@@ -258,75 +191,21 @@ export default function Profile() {
                 maximumDate={maxBirthDate()}
                 minimumDate={minBirthDate()}
               />
-            </View>
+            </Field>
 
-            {/* Height */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Height</Text>
-                <UnitToggle units={["cm", "ft"]} active={heightUnit} onPick={toggleHeightUnit} />
-              </View>
-              {heightUnit === "cm" ? (
-                <View style={styles.inputContainer}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="175"
-                    placeholderTextColor={COLORS.placeholderText}
-                    value={metricHeight}
-                    onChangeText={onHeightCm}
-                    keyboardType="numeric"
-                    maxLength={3}
-                  />
-                </View>
-              ) : (
-                <View style={styles.rowContainer}>
-                  <View style={[styles.inputContainer, { flex: 1 }]}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="5"
-                      placeholderTextColor={COLORS.placeholderText}
-                      value={ftVal}
-                      onChangeText={onFt}
-                      keyboardType="numeric"
-                      maxLength={1}
-                    />
-                    <Text style={styles.unitSuffix}>ft</Text>
-                  </View>
-                  <View style={[styles.inputContainer, { flex: 1 }]}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="9"
-                      placeholderTextColor={COLORS.placeholderText}
-                      value={inVal}
-                      onChangeText={onIn}
-                      keyboardType="numeric"
-                      maxLength={2}
-                    />
-                    <Text style={styles.unitSuffix}>in</Text>
-                  </View>
-                </View>
-              )}
-            </View>
-
-            {/* Weight */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Weight</Text>
-                <UnitToggle units={["kg", "lb"]} active={weightUnit} onPick={toggleWeightUnit} />
-              </View>
+            {/* Bio (optional) */}
+            <Field label="Bio (optional)">
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
-                  placeholder={weightUnit === "kg" ? "70" : "154"}
+                  placeholder="A little about you"
                   placeholderTextColor={COLORS.placeholderText}
-                  value={weightUnit === "kg" ? metricWeight : lbVal}
-                  onChangeText={weightUnit === "kg" ? onWeightKg : onLb}
-                  keyboardType="numeric"
-                  maxLength={6}
+                  value={form.bio}
+                  onChangeText={setField("bio")}
+                  maxLength={150}
                 />
-                <Text style={styles.unitSuffix}>{weightUnit}</Text>
               </View>
-            </View>
+            </Field>
           </View>
 
           <TouchableOpacity

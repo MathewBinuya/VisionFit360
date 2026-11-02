@@ -27,7 +27,7 @@ export const useAuthStore = create((set) => ({
   isLoading: false,
   isCheckingAuth: true,
 
-  register: async (username, email, password) => {
+  register: async (email, password) => {
     set({ isLoading: true });
     try {
       const response = await fetch(`${API_URL}/auth/register`, {
@@ -36,7 +36,6 @@ export const useAuthStore = create((set) => ({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username,
           email,
           password,
         }),

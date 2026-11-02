@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, BackHandler, ScrollView, Modal } from 'react-native'
 import { showAlert } from '../../components/AppAlert'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from 'expo-router';
 import COLORS from '../../constants/colors';
@@ -30,12 +30,37 @@ By checking the box below, you confirm that you have read, understood, and agree
 
 export default function Signup() {
 const router = useRouter();
-const [username, setUsername] = useState("");
 const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const [showPassword, setShowPassword] = useState(false);
 const [agreedToTerms, setAgreedToTerms] = useState(false);
 const [showTerms, setShowTerms] = useState(false);
+// The agree checkbox stays locked until the user scrolls the Terms to the bottom.
+const [termsRead, setTermsRead] = useState(false);
+const termsViewH = useRef(0);    // visible height of the Terms ScrollView
+const termsContentH = useRef(0); // full height of its content
+
+// Open the Terms, clearing the previous session's measurements so the
+// "fits on screen" check can't fire against stale (or closed-modal) sizes.
+const openTerms = () => {
+  termsViewH.current = 0;
+  termsContentH.current = 0;
+  setShowTerms(true);
+};
+
+// true once the Terms ScrollView is scrolled to its end.
+const reachedTermsEnd = ({ layoutMeasurement, contentOffset, contentSize }) =>
+  layoutMeasurement.height + contentOffset.y >= contentSize.height - 24;
+
+// Mark read if the whole text already fits without scrolling — but ONLY while
+// the modal is open and both sizes have been measured this session.
+const evalTermsFit = () => {
+  if (!showTerms) return;
+  if (termsViewH.current > 0 && termsContentH.current > 0 &&
+      termsContentH.current <= termsViewH.current + 1) {
+    setTermsRead(true);
+  }
+};
 
 const {user, isLoading, register, token} = useAuthStore();
 
@@ -88,7 +113,7 @@ const handleSignUp = async () => {
     showAlert("Terms required", "Please agree to the Terms & Conditions to continue.");
     return;
   }
-  const result = await register(username, email, password);
+  const result = await register(email, password);
   if(!result.success) {
       showAlert("Error", result.error);
       return;
@@ -105,27 +130,6 @@ const handleSignUp = async () => {
       <View style={styles.card}>
         <Text style={styles.title}>Sign up</Text>
         <View style={styles.formContainer}>
-                   {/* Username */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Username</Text>
-          <View style={styles.inputContainer}>
-              <Ionicons 
-                name="person"
-                size={20}
-                color={COLORS.black}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Username"
-                placeholderTextColor={COLORS.placeholderText}
-                onChangeText={setUsername} 
-                value={username}
-                autoCapitalize="none"
-                maxLength={30}
-              />
-          </View>
-        </View>
                   {/* Email */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Email</Text>
@@ -206,22 +210,34 @@ const handleSignUp = async () => {
           )}
         </View>
 
-        {/* Terms checkbox */}
+        {/* Terms checkbox — locked until the user has scrolled the Terms to the end */}
         <View style={pwStyles.termsRow}>
-          <TouchableOpacity onPress={() => setAgreedToTerms(!agreedToTerms)} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() => {
+              // Not read yet? Open the Terms so they can scroll through first.
+              if (!termsRead) { openTerms(); return; }
+              setAgreedToTerms(!agreedToTerms);
+            }}
+            hitSlop={8}
+          >
             <Ionicons
               name={agreedToTerms ? "checkbox" : "square-outline"}
               size={22}
-              color={agreedToTerms ? COLORS.button : COLORS.gray}
+              color={!termsRead ? COLORS.border : (agreedToTerms ? COLORS.button : COLORS.gray)}
             />
           </TouchableOpacity>
           <Text style={pwStyles.termsText}>
             I agree to the{" "}
-            <Text style={pwStyles.termsLink} onPress={() => setShowTerms(true)}>
+            <Text style={pwStyles.termsLink} onPress={openTerms}>
               Terms &amp; Conditions
             </Text>
           </Text>
         </View>
+        {!termsRead && (
+          <Text style={pwStyles.termsHint}>
+            Please open and read the Terms &amp; Conditions to the end to enable this.
+          </Text>
+        )}
         </View>
          <TouchableOpacity
            style={[styles.button, ((!isValidPassword && password.length > 0) || !agreedToTerms || showEmailError) && { opacity: 0.6 }]}
@@ -254,14 +270,23 @@ const handleSignUp = async () => {
                 <Ionicons name="close" size={24} color={COLORS.black} />
               </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={{ padding: 20 }}>
+            <ScrollView
+              contentContainerStyle={{ padding: 20 }}
+              scrollEventThrottle={16}
+              onScroll={(e) => { if (showTerms && reachedTermsEnd(e.nativeEvent)) setTermsRead(true); }}
+              onContentSizeChange={(_w, h) => { termsContentH.current = h; evalTermsFit(); }}
+              onLayout={(e) => { termsViewH.current = e.nativeEvent.layout.height; evalTermsFit(); }}
+            >
               <Text style={{ fontSize: 13, color: COLORS.gray, lineHeight: 20 }}>{TERMS_TEXT}</Text>
             </ScrollView>
             <TouchableOpacity
-              style={{ backgroundColor: COLORS.button, borderRadius: 12, padding: 14, alignItems: 'center', margin: 20, marginTop: 8 }}
+              disabled={!termsRead}
+              style={{ backgroundColor: COLORS.button, borderRadius: 12, padding: 14, alignItems: 'center', margin: 20, marginTop: 8, opacity: termsRead ? 1 : 0.5 }}
               onPress={() => { setAgreedToTerms(true); setShowTerms(false); }}
             >
-              <Text style={{ color: COLORS.white, fontSize: 15, fontWeight: '700' }}>I Agree</Text>
+              <Text style={{ color: COLORS.white, fontSize: 15, fontWeight: '700' }}>
+                {termsRead ? "I Agree" : "Scroll down to read all terms"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -282,4 +307,5 @@ const pwStyles = StyleSheet.create({
   termsRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 4 },
   termsText: { flex: 1, fontSize: 13, color: COLORS.gray, lineHeight: 18 },
   termsLink: { color: COLORS.button, fontWeight: "600" },
+  termsHint: { fontSize: 12, color: COLORS.placeholderText, marginTop: 6, marginLeft: 30, lineHeight: 16 },
 });

@@ -7,6 +7,7 @@ import styles from '../../assets/styles/onBoardingStyle/profile.style'
 import api from '../../lib/axios'
 import { GOALS } from '../../lib/goals'
 import { useAlert } from '../../components/AppAlert'
+import { useAuthStore } from '../../store/authStore'
 
 export default function Goal() {
   const alert = useAlert();
@@ -21,7 +22,9 @@ export default function Goal() {
     setIsSaving(true);
     try {
       await api.put("/profile", { goal });
-      router.push("/(onBoarding)/bmi");
+      await api.put("/profile/complete-onboarding");       // flip the flag on backend
+      await useAuthStore.getState().completeOnboarding();  // sync store + storage
+      router.replace("/(tabs)/home");
     } catch (error) {
       alert("Error", error.response?.data?.message || "Failed to save");
     } finally {
@@ -32,7 +35,7 @@ export default function Goal() {
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.card}>
-        <Text style={styles.label}>2 of 3</Text>
+        <Text style={styles.label}>4 of 4</Text>
         <Text style={styles.title}>{"What's your main goal?"}</Text>
 
         <View style={{ marginTop: 16, marginBottom: 20 }}>

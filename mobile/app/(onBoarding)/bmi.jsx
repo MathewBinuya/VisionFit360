@@ -44,14 +44,9 @@ export default function BMI() {
     }
   };
 
-  const handleContinue = async () => {
-    try {
-      await api.put("/profile/complete-onboarding");        // flip the flag on backend
-      await useAuthStore.getState().completeOnboarding();   // sync store + storage
-      router.replace("/(tabs)/home");
-    } catch (error) {
-      alert("Error", error.response?.data?.message || "Something went wrong");
-    }
+  const handleContinue = () => {
+    // last step (fitness goal) finishes onboarding
+    router.push("/(onBoarding)/goal");
   };
 
   // Adult categories apply to 18+. We only hide the category when we KNOW the
@@ -74,7 +69,7 @@ export default function BMI() {
       contentContainerStyle={[styles.container, { paddingBottom: 40 }]}
     >
       <View style={styles.card}>
-        <Text style={styles.step}>3 of 3</Text>
+        <Text style={styles.step}>3 of 4</Text>
         <Text style={styles.title}>Your body composition</Text>
 
         {loading ? (
@@ -147,7 +142,7 @@ export default function BMI() {
         )}
 
         <TouchableOpacity style={styles.button} onPress={handleContinue}>
-          <Text style={styles.buttonText}>Continue to dashboard</Text>
+          <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
