@@ -16,15 +16,27 @@ import {
 import DateField from '../../components/DateField'
 import { ageFromDob, isValidDob, formatDob, maxBirthDate, minBirthDate, MIN_AGE, MAX_AGE } from '../../lib/age'
 
-// Compact label/value row for the read-only view (keeps the profile short + tidy).
-const InfoRow = ({ label, value }) => (
+const FONT = "GeneralSans-Variable";
+
+// A bordered group that holds a set of InfoRows (read-only view).
+const Card = ({ children }) => (
+  <View style={{
+    backgroundColor: COLORS.cards, borderRadius: 16, borderWidth: 1,
+    borderColor: COLORS.border, paddingHorizontal: 16,
+  }}>
+    {children}
+  </View>
+);
+
+// Compact label/value row; `last` omits the divider so it sits flush in the Card.
+const InfoRow = ({ label, value, last }) => (
   <View style={{
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: COLORS.border,
+    paddingVertical: 14, borderBottomWidth: last ? 0 : 1, borderBottomColor: COLORS.border,
   }}>
-    <Text style={{ fontSize: 13, color: COLORS.placeholderText }}>{label}</Text>
+    <Text style={{ fontSize: 13, color: COLORS.placeholderText, fontFamily: FONT }}>{label}</Text>
     <Text
-      style={{ fontSize: 15, color: COLORS.black, fontWeight: '600', flexShrink: 1, marginLeft: 16, textAlign: 'right' }}
+      style={{ fontSize: 15, color: COLORS.black, fontWeight: '600', flexShrink: 1, marginLeft: 16, textAlign: 'right', fontFamily: FONT }}
       numberOfLines={1}
     >
       {value || '—'}
@@ -35,7 +47,7 @@ const InfoRow = ({ label, value }) => (
 const SectionTitle = ({ children }) => (
   <Text style={{
     fontSize: 12, letterSpacing: 1, color: COLORS.placeholderText, textTransform: 'uppercase',
-    fontWeight: '700', marginTop: 24, marginBottom: 2,
+    fontWeight: '700', marginTop: 22, marginBottom: 8, marginLeft: 4, fontFamily: FONT,
   }}>
     {children}
   </Text>
@@ -391,6 +403,9 @@ export default function Profile() {
             <Text style={styles.changePhotoText}>Change photo</Text>
           </TouchableOpacity>
         )}
+        <Text style={{ fontSize: 19, fontWeight: "700", color: COLORS.black, marginTop: 4, fontFamily: FONT }}>
+          {fullName || form.username || "—"}
+        </Text>
         <Text style={styles.usernameText}>@{user?.username}</Text>
       </View>
 
@@ -398,15 +413,19 @@ export default function Profile() {
         /* ---------- compact read-only view ---------- */
         <>
           <SectionTitle>Account</SectionTitle>
-          <InfoRow label="Username" value={form.username} />
-          <InfoRow label="Name" value={fullName} />
-          <InfoRow label="Bio" value={form.bio} />
+          <Card>
+            <InfoRow label="Username" value={form.username} />
+            <InfoRow label="Name" value={fullName} />
+            <InfoRow label="Bio" value={form.bio} last />
+          </Card>
 
           <SectionTitle>Body</SectionTitle>
-          <InfoRow label="Birthdate" value={dob ? formatDob(dob) : null} />
-          <InfoRow label="Age" value={age != null ? `${age} years old` : null} />
-          <InfoRow label="Height" value={metricHeight ? heightDisplay : null} />
-          <InfoRow label="Weight" value={metricWeight ? weightDisplay : null} />
+          <Card>
+            <InfoRow label="Birthdate" value={dob ? formatDob(dob) : null} />
+            <InfoRow label="Age" value={age != null ? `${age} years old` : null} />
+            <InfoRow label="Height" value={metricHeight ? heightDisplay : null} />
+            <InfoRow label="Weight" value={metricWeight ? weightDisplay : null} last />
+          </Card>
         </>
       ) : (
         /* ---------- edit form ---------- */
