@@ -3,7 +3,13 @@ import LoginEvent from "../models/loginEvent.model.js";
 import generateToken from "../utils/generateToken.js";
 import { isAllowedEmail, normalizeEmail } from "../utils/emailValidator.js";
 import { sendEmail } from "../lib/email.js";
+import { OAuth2Client } from "google-auth-library";
 import crypto from "crypto";
+
+// Verifies Google ID tokens. The audience is our Web client ID — the token is
+// minted for it, so it's what we validate against.
+const googleClient = new OAuth2Client();
+const GOOGLE_WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID;
 
 const CODE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds between emails
@@ -254,6 +260,11 @@ export const login = async (req, res) => {
     if (!user)
       return res.status(400).json({ message: "Invalid credentials" });
 
+    // Google-only account (no password set) — steer them to the Google button
+    // instead of running comparePassword against an empty hash.
+    if (!user.password)
+      return res.status(400).json({ message: "This account uses Google sign-in. Please continue with Google." });
+
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect)
       return res.status(400).json({ message: "Invalid credentials" });
@@ -288,6 +299,96 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in login route", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Sign in / sign up with Google. The app sends the Google ID token obtained
+// natively; we verify it server-side, then find-or-create the matching user and
+// return our own JWT in the exact same shape as login/verifyEmail.
+export const googleAuth = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken)
+      return res.status(400).json({ message: "Google ID token is required" });
+
+    if (!GOOGLE_WEB_CLIENT_ID) {
+      console.log("GOOGLE_WEB_CLIENT_ID is not set — Google sign-in is unconfigured");
+      return res.status(500).json({ message: "Google sign-in is not configured" });
+    }
+
+    // Verify the token's signature + audience with Google.
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: GOOGLE_WEB_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (e) {
+      console.log("Google token verification failed:", e.message);
+      return res.status(401).json({ message: "Invalid or expired Google token" });
+    }
+
+    if (!payload?.email || !payload.email_verified)
+      return res.status(401).json({ message: "Google account email is not verified" });
+
+    const googleId = payload.sub;
+    const email = normalizeEmail(payload.email);
+
+    // 1) Returning Google user.
+    let user = await User.findOne({ googleId });
+
+    // 2) Existing email/password account with the same email — link Google to it.
+    //    Safe because Google has verified ownership of this email.
+    if (!user) {
+      user = await User.findOne({ email });
+      if (user) {
+        user.googleId = googleId;
+        if (!user.isVerified) user.isVerified = true;
+        if (!user.photo && payload.picture) user.photo = payload.picture;
+      }
+    }
+
+    // 3) Brand-new user. Apply the same allowed-domain policy as email signup.
+    if (!user) {
+      if (!isAllowedEmail(email))
+        return res.status(400).json({ message: "Please use a Gmail, Outlook, or Yahoo account" });
+
+      user = new User({
+        email,
+        googleId,
+        authProvider: "google",
+        isVerified: true,
+        photo: payload.picture || "",
+      });
+    }
+
+    const token = generateToken(user._id);
+    user.currentToken = token;
+    const now = new Date();
+    user.lastLoginAt = now;
+    user.lastActiveAt = now;
+    await user.save();
+
+    LoginEvent.create({ user: user._id, createdAt: now }).catch((e) =>
+      console.log("Failed to record login event:", e.message)
+    );
+
+    res.status(200).json({
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        onBoardingComplete: user.onBoardingComplete,
+        photo: user.photo,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.log("Error in googleAuth route", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

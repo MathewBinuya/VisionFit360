@@ -9,7 +9,19 @@ const userSchema = new mongoose.Schema(
     // so the many "no username yet" accounts don't collide.
     username: { type: String, unique: true, sparse: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true, minlength: 6 },
+    // Password is required only for local (email/password) accounts. Google
+    // accounts authenticate through Google and never set one.
+    password: {
+      type: String,
+      required: function () { return this.authProvider !== "google"; },
+      minlength: 6,
+    },
+    // --- sign-in method ---
+    // "local" = email + password, "google" = Google OAuth. googleId is Google's
+    // stable user id (the token "sub"); sparse unique so the many local accounts
+    // without one don't collide.
+    authProvider: { type: String, enum: ["local", "google"], default: "local" },
+    googleId: { type: String, unique: true, sparse: true },
     onBoardingComplete: { type: Boolean, default: false },
     name: { type: String, default: "" }, // legacy display name; kept for existing data
     // real name (optional, set-once). Middle name is optional even then.
