@@ -13,6 +13,8 @@ const styles = StyleSheet.create({
   scrollViewStyle: { alignItems: "center", backgroundColor: COLORS.background, },
   topIllustration: { alignItems: "center", width: "100%", marginBottom: 8, },
   illustrationImage: { width: width * 0.6, height: height * 0.28, maxWidth: 320, maxHeight: 240 },
+  // minimalist brand mark (replaces the large illustration)
+  logoImage: { width: 96, height: 96 },
   card: {
     width: "100%", maxWidth: 480, alignSelf: "center",
     backgroundColor: COLORS.cards,

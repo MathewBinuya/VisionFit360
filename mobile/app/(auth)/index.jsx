@@ -62,8 +62,8 @@ const handleLogin = async () => {
             {/* Login Image */}
        <View style={styles.topIllustration}>
           <Image
-          source={require('../../assets/images/login-image.png')}
-          style={styles.illustrationImage}
+          source={require('../../assets/images/visionfit-logo.png')}
+          style={styles.logoImage}
           resizeMode='contain'
        />
        </View>
