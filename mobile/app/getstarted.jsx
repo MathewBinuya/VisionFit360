@@ -1,4 +1,5 @@
-import { View, Text, Image, StyleSheet, useWindowDimensions } from 'react-native'
+import { View, Text, Image, StyleSheet, useWindowDimensions, ScrollView } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -8,6 +9,7 @@ import FadeInView from "../components/FadeInView"
 
 export default function GetStarted() {
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   // responsive hero: shrink on short phones so the buttons always stay on screen
   const heroHeight = Math.min(240, Math.round(height * 0.3));
 
@@ -18,7 +20,12 @@ export default function GetStarted() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}
+      showsVerticalScrollIndicator={false}
+      bounces={false}
+    >
       <FadeInView style={styles.content}>
         <Text style={styles.brand}>VISIONFIT360</Text>
         <Text style={styles.title}>Start your{"\n"}journey</Text>
@@ -43,14 +50,15 @@ export default function GetStarted() {
           </PressableScale>
         </View>
       </FadeInView>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   content: { width: "100%", maxWidth: 480, alignSelf: "center" },
+  scroll: { flex: 1, backgroundColor: COLORS.background },
   container: {
-    flex: 1,
+    flexGrow: 1,            // centers when content fits, scrolls when it doesn't
     backgroundColor: COLORS.background,
     padding: 24,
     justifyContent: "center",
