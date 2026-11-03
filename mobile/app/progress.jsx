@@ -19,9 +19,9 @@ const UP_COLOR = "#1E8E4E"; // gentle green for "more / up"
 // Plain-language week-over-week change — users read words + a real amount, not "%".
 // `diff` and `unit` are already in the user's chosen display unit (kg/lb).
 const describeVsPrev = (diff, unit) => {
-  if (diff > 0) return `${compactKg(diff)} ${unit} more than the week before`;
-  if (diff < 0) return `${compactKg(-diff)} ${unit} less than the week before`;
-  return "about the same as the week before";
+  if (diff > 0) return `${compactKg(diff)} ${unit} more than the previous week`;
+  if (diff < 0) return `${compactKg(-diff)} ${unit} less than the previous week`;
+  return "unchanged from the previous week";
 };
 
 
@@ -29,27 +29,27 @@ const GUIDE_STEPS = [
   {
     icon: "barbell-outline",
     title: "Total weight lifted",
-    text: "The total weight you moved in a week (each set's reps × weight, all added up). If it rises week over week, you're getting stronger.",
+    text: "The combined weight moved across all sets in a week (reps × weight, summed). A rising trend indicates increasing strength.",
   },
   {
     icon: "swap-horizontal-outline",
-    title: "Last week → this week",
-    text: "The big number compares last week with this week so far. The badge shows the change, e.g. +12% means you've lifted 12% more.",
+    title: "Week-over-week change",
+    text: "The headline figure compares this week so far with the previous week, and the badge summarises the change.",
   },
   {
     icon: "stats-chart-outline",
-    title: "The bars",
-    text: "Each bar is one week. The darkest bar is this week. Tap any bar to see that week's dates and totals.",
+    title: "The weekly bars",
+    text: "Each bar represents one week, with the darkest being the current week. Tap any bar to view its dates and totals.",
   },
   {
     icon: "calendar-outline",
     title: "Workouts per week",
-    text: "How many workouts you completed each week, against a target based on your usual routine. A steady row of bars means good consistency.",
+    text: "Workouts completed each week against a target based on your routine. Consistent bars reflect steady training.",
   },
   {
     icon: "trophy-outline",
     title: "Heaviest lifts & records",
-    text: "Your best weight for each exercise. The \"+\" figure shows how much you beat your previous best.",
+    text: "Your best weight for each exercise. The \"+\" figure shows the gain over your previous best.",
   },
 ];
 
@@ -198,7 +198,7 @@ export default function Progress() {
       return (
         <TouchableOpacity style={styles.center} onPress={() => { setLoading(true); load(); }}>
           <Ionicons name="cloud-offline-outline" size={36} color={COLORS.placeholderText} />
-          <Text style={[styles.muted, { marginTop: 8 }]}>{"Couldn't load your progress. Tap to retry."}</Text>
+          <Text style={[styles.muted, { marginTop: 8 }]}>{"Unable to load your progress. Tap to retry."}</Text>
         </TouchableOpacity>
       );
     }
@@ -207,7 +207,7 @@ export default function Progress() {
         <View style={styles.center}>
           <Ionicons name="stats-chart-outline" size={40} color={COLORS.placeholderText} />
           <Text style={[styles.muted, { marginTop: 10 }]}>
-            Complete your first workout in the Workout Tracker to start seeing weekly progress, consistency and personal records here.
+            Complete your first workout in the Workout Tracker to begin tracking weekly volume, consistency, and personal records.
           </Text>
         </View>
       );
@@ -222,17 +222,17 @@ export default function Progress() {
     if (s.lastWeek.volume <= 0) {
       if (s.thisWeek.volume > 0) {
         volBadge = { word: "New", arrow: null, color: COLORS.placeholderText };
-        volSentence = "Your first tracked week — great start! 💪";
+        volSentence = "Your first tracked week.";
       }
     } else if (volDiff > 0) {
       volBadge = { word: "More", arrow: "arrow-up", color: UP_COLOR };
-      volSentence = `You've lifted ${compactKg(volDiff)} ${weightUnit} more than last week.`;
+      volSentence = `${compactKg(volDiff)} ${weightUnit} more than last week.`;
     } else if (volDiff < 0) {
       volBadge = { word: "Less", arrow: "arrow-down", color: COLORS.placeholderText };
-      volSentence = `About ${compactKg(-volDiff)} ${weightUnit} less than last week so far.`;
+      volSentence = `${compactKg(-volDiff)} ${weightUnit} less than last week so far.`;
     } else {
       volBadge = { word: "Same", arrow: null, color: COLORS.placeholderText };
-      volSentence = "About the same as last week so far.";
+      volSentence = "On par with last week so far.";
     }
 
     return (
@@ -240,7 +240,7 @@ export default function Progress() {
         {/* weekly volume */}
         <View style={styles.card}>
           <CardHeader icon="barbell-outline" title="Weight lifted" />
-          <Text style={styles.cardSub}>All the weight you lifted this week (each set's reps × weight, added up).</Text>
+          <Text style={styles.cardSub}>Total weight lifted this week (reps × weight across all sets).</Text>
           <View style={styles.heroRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.hero}>
@@ -274,7 +274,7 @@ export default function Progress() {
         {/* weekly workouts / consistency */}
         <View style={styles.card}>
           <CardHeader icon="calendar-outline" title="Workouts per week" />
-          <Text style={styles.cardSub}>How many workouts you finished, vs. your weekly goal.</Text>
+          <Text style={styles.cardSub}>Workouts completed against your weekly goal.</Text>
           <View style={styles.heroRow}>
             <View>
               <Text style={styles.hero}>
@@ -342,7 +342,7 @@ export default function Progress() {
           <CardHeader icon="medal-outline" title="Heaviest lifts" />
           {data.records.length === 0 ? (
             <Text style={[styles.muted, { textAlign: "left", marginTop: 6 }]}>
-              Log sets with a weight ({weightUnit}) in the Workout Tracker to track your heaviest lifts.
+              Log weighted sets in the Workout Tracker to see your heaviest lifts here.
             </Text>
           ) : (
             <>
@@ -395,7 +395,7 @@ export default function Progress() {
       <Modal visible={showGuide} transparent animationType="fade" statusBarTranslucent onRequestClose={closeGuide}>
         <View style={styles.guideOverlay}>
           <View style={styles.guideCard}>
-            <Text style={styles.guideTitle}>How to read your progress</Text>
+            <Text style={styles.guideTitle}>Understanding your progress</Text>
             <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false}>
               {GUIDE_STEPS.map((step) => (
                 <View key={step.title} style={styles.guideRow}>
@@ -410,7 +410,7 @@ export default function Progress() {
               ))}
             </ScrollView>
             <TouchableOpacity style={styles.guideBtn} onPress={closeGuide}>
-              <Text style={styles.guideBtnText}>Got it</Text>
+              <Text style={styles.guideBtnText}>Done</Text>
             </TouchableOpacity>
           </View>
         </View>
