@@ -2,6 +2,7 @@ import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { API_URL } from "../lib/api";
+import { getGoogleIdToken } from "../lib/google";
 import { ensureInboxOwner, resetInbox, clearInboxOwner } from "../lib/notifInbox";
 
 // expo-notifications is called directly here (not via lib/notifications) because
@@ -134,6 +135,38 @@ export const useAuthStore = create((set) => ({
           email: data.email,
         };
       }
+
+      await AsyncStorage.setItem("user", JSON.stringify(data.user));
+      await AsyncStorage.setItem("token", data.token);
+      await isolateNotificationsFor(data.user?.id);
+
+      set({ token: data.token, user: data.user, isLoading: false });
+
+      return { success: true };
+    } catch (error) {
+      set({ isLoading: false });
+      return { success: false, error: error.message };
+    }
+  },
+
+  googleLogin: async () => {
+    set({ isLoading: true });
+    try {
+      const { idToken, cancelled } = await getGoogleIdToken();
+      if (cancelled) {
+        set({ isLoading: false });
+        return { success: false, cancelled: true };
+      }
+
+      const response = await fetch(`${API_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.message || "Google sign-in failed");
 
       await AsyncStorage.setItem("user", JSON.stringify(data.user));
       await AsyncStorage.setItem("token", data.token);

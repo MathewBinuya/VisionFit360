@@ -8,6 +8,7 @@ import styles from '../../assets/styles/authStyle/login.style'
 import COLORS from '../../constants/colors'
 import FadeInView from '../../components/FadeInView'
 import PressableScale from '../../components/PressableScale'
+import GoogleSignInButton from '../../components/GoogleSignInButton'
 
 import {useAuthStore} from "../../store/authStore"
 
@@ -143,6 +144,9 @@ const handleLogin = async () => {
                 >
                   <Text style={styles.forgotPasswordText}>Forgot password?</Text>
               </TouchableOpacity>
+
+              <GoogleSignInButton />
+
             
                 {/* Footer */}
             <View style={styles.footer}> 

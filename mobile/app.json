@@ -47,7 +47,8 @@
           "cameraPermission": "Allow VisionFIT to use the camera for AR workout tracking."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,

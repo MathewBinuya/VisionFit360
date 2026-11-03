@@ -10,6 +10,7 @@ import { isAllowedEmail, EMAIL_DOMAIN_ERROR } from '../../lib/emailValidator';
 import {useAuthStore} from "../../store/authStore"
 import FadeInView from '../../components/FadeInView'
 import PressableScale from '../../components/PressableScale'
+import GoogleSignInButton from '../../components/GoogleSignInButton'
 
 const TERMS_TEXT = `Welcome to VisionFIT360. By creating an account, you agree to the following:
 
@@ -258,6 +259,8 @@ const handleSignUp = async () => {
               <Text style={styles.buttonText}>Sign Up</Text>
             )}
         </PressableScale>
+
+        <GoogleSignInButton label="Sign up with Google" />
                   {/* Footer */}
         <View style={styles.footer}>
            <Text style={styles.footerText}>Already have an account?</Text>
