@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useState } from "react";
 import { showAlert } from "./AppAlert";
@@ -57,7 +57,11 @@ export default function GoogleSignInButton({ label = "Continue with Google", sho
           <ActivityIndicator color={COLORS.black} />
         ) : (
           <>
-            <Ionicons name="logo-google" size={20} color="#EA4335" />
+            <Image
+              source={require("../assets/images/google-g.png")}
+              style={styles.logo}
+              contentFit="contain"
+            />
             <Text style={styles.buttonText}>{label}</Text>
           </>
         )}
@@ -82,4 +86,5 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
   buttonText: { color: COLORS.black, fontSize: 15, fontWeight: "600" },
+  logo: { width: 20, height: 20 },
 });

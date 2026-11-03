@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Image, Dimensions, TextInput, KeyboardAvoidingView, ActivityIndicator, TouchableOpacity, Platform, ScrollView } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { showAlert } from '../../components/AppAlert'
 import { Link } from 'expo-router'        
 import { router } from "expo-router";
@@ -21,6 +22,7 @@ const [showPassword, setShowPassword] = useState(false);
 const [focused, setFocused] = useState(null); // which field is focused (for highlight)
 
 const {isLoading, login, isCheckingAuth} = useAuthStore();
+const insets = useSafeAreaInsets();
 
 const handleLogin = async () => {
   const result = await login(email,password);
@@ -56,7 +58,7 @@ const handleLogin = async () => {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >  
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <ScrollView contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {/* Login Image */}
        <View style={styles.topIllustration}>
           <Image

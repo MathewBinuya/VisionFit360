@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, BackHandler, ScrollView, Modal } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { showAlert } from '../../components/AppAlert'
 import { useState, useEffect, useRef } from 'react'
 import { Ionicons } from "@expo/vector-icons"
@@ -33,6 +34,7 @@ By checking the box below, you confirm that you have read, understood, and agree
 
 export default function Signup() {
 const router = useRouter();
+const insets = useSafeAreaInsets();
 const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const [showPassword, setShowPassword] = useState(false);
@@ -130,7 +132,7 @@ const handleSignUp = async () => {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
      >
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <ScrollView contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <FadeInView style={styles.card}>
         <Text style={styles.title}>Create account</Text>
         <Text style={styles.subtitle}>Start your VisionFIT journey</Text>
