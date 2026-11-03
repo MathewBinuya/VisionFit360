@@ -12,6 +12,7 @@ import feedbackRoutes from "./routes/feedbackRoutes.js";
 import cors from "cors";
 
 import { connectDB } from "./lib/db.js";
+import { homePage, privacyPage, termsPage } from "./lib/legalPages.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,12 @@ app.set("trust proxy", 1);
 
 app.use(cors());              // ← MOVED UP: must come before routes
 app.use(express.json());      // keep this once, before routes
+
+// Public pages required to publish the Google OAuth consent screen (home /
+// privacy / terms under an authorized domain).
+app.get("/", (req, res) => res.type("html").send(homePage()));
+app.get("/privacy", (req, res) => res.type("html").send(privacyPage()));
+app.get("/terms", (req, res) => res.type("html").send(termsPage()));
 
 app.use("/api/ai", aiRoutes);
 app.use("/api/auth", authRoutes);
