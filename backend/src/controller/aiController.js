@@ -143,11 +143,12 @@ const buildUserContext = async (userId) => {
 
   const lines = [];
 
+  let bmiCat = null;
   if (user?.heightCm && user?.weightKg) {
     const h = user.heightCm / 100;
     const bmi = user.weightKg / (h * h);
-    const cat = bmiCategory(bmi);
-    lines.push(`BMI ${bmi.toFixed(1)} (${cat} range; height ${user.heightCm} cm, weight ${user.weightKg} kg). ${BMI_GUIDANCE[cat]}`);
+    bmiCat = bmiCategory(bmi);
+    lines.push(`BMI ${bmi.toFixed(1)} (${bmiCat} range; height ${user.heightCm} cm, weight ${user.weightKg} kg). ${BMI_GUIDANCE[bmiCat]}`);
   } else {
     lines.push("BMI unknown — use standard intensity for the user's level.");
   }
@@ -187,7 +188,17 @@ const buildUserContext = async (userId) => {
     `If there's little history, start conservatively and beginner-friendly. Avoid repeating the exact same focus as the most recent session when possible. Always prioritise good form over load.`;
 
   // weightCap feeds the server-side weight clamp (defense-in-depth for minors).
-  return { text, age, weightCap };
+  // `profile` holds the SAME structured signals as the prompt, so the rule-based
+  // fallback (buildFallbackWorkout) can personalise without the AI.
+  const profile = {
+    bmiCat,
+    goal: user?.goal || "get_fit",
+    gender: user?.gender,
+    ageTier: tier,
+    level,
+    records, // [{ exercise, bestKg }, ...] for base weights
+  };
+  return { text, age, weightCap, profile };
 };
 
 const CATALOG_RULE =
@@ -248,9 +259,90 @@ const CHAT_JSON_SHAPE =
   `{"responseType": "chat" or "workout", "reply": "<always present; for chat the full answer, for workout a short one-sentence intro>", "title": "<only for workout>", "exercises": [<only for workout; same shape as a workout's exercises: {"name","sets":[{"reps","weightKg","restSeconds"}]}>]}\n` +
   `Set responseType to "workout" ONLY when giving a workout/routine/plan; otherwise "chat" and omit title/exercises. Use ONLY supported exercise names.`;
 
+// ---- Rule-based fallback workout (no AI) ------------------------------------
+// Served when EVERY AI call fails (Groq down, network, unparseable output) so the
+// user ALWAYS gets a real, profile-appropriate workout instead of an error.
+// Uses the SAME structured signals as the AI (BMI, age tier, gender, goal, PR
+// history), applied as deterministic rules. Less varied than the LLM, but safe
+// and genuinely personalised. Its output still passes through sanitizeExercises.
+const rotate = (arr, seed) => arr[((seed % arr.length) + arr.length) % arr.length];
+
+const buildFallbackWorkout = (profile = {}, weightCap = 500) => {
+  const bmi = profile.bmiCat;
+  const goal = profile.goal || "get_fit";
+  const tier = profile.ageTier || "adult";
+  const female = profile.gender === "female";
+  const obese = bmi === "obese";
+  const child = tier === "child";
+  // rotate a couple of picks by day so it isn't identical every single day
+  const day = Math.floor((Date.now() + 8 * 3600 * 1000) / 86400000); // ~Manila day
+
+  // sets / reps / rest from goal + BMI + age tier (mirrors the prompt guidance)
+  let sets = 3, reps = 10, rest = 60;
+  if (goal === "get_lean") { reps = 13; rest = 50; }
+  else if (goal === "maintain_weight") { reps = 11; rest = 60; }
+  if (bmi === "underweight") { reps = 8; rest = 90; }
+  else if (bmi === "overweight") { rest = 75; }
+  else if (obese) { reps = 12; rest = 105; }        // obesity range: longer rest
+  if (child) { sets = 2; reps = 12; rest = 60; }     // youth: lower volume
+
+  // base weight for a weighted move: the user's recorded best (no progression in
+  // the fallback), else a level default; always clamped to the age cap; 0 for kids.
+  const weightFor = (name) => {
+    if (child) return 0; // bodyweight-first for under-13
+    const rec = (profile.records || []).find((r) => canonicalExerciseName(r.exercise) === name);
+    const level = profile.level || "beginner";
+    const base = rec && rec.bestKg > 0
+      ? rec.bestKg
+      : level === "advanced" ? 15 : level === "intermediate" ? 10 : 5;
+    return Math.min(base, weightCap);
+  };
+
+  // balanced selection across muscle groups, respecting constraints:
+  // no high-impact cardio for obese; bodyweight-first for children; slight
+  // gender emphasis (never changes difficulty).
+  const names = [];
+  names.push(rotate(female ? ["Sumo Squats", "Squats"] : ["Squats", "Sumo Squats"], day)); // Legs
+  names.push("Push-ups"); // Chest
+  if (child) {
+    names.push("Knee Raises", "Side Leg Raises", "Side Bends"); // all bodyweight
+  } else {
+    names.push(female ? "Lateral Raises" : "Shoulder Press"); // Shoulders
+    names.push("Bicep Curls");                                 // Arms
+    names.push(female ? "Side Bends" : "Knee Raises");         // Core
+  }
+  // conditioning / extra — skip high-impact cardio for the obesity range & kids
+  names.push(obese || child ? "Side Leg Raises" : rotate(["Jumping Jacks", "High Knees"], day));
+
+  const exercises = [...new Set(names)].slice(0, 6).map((name) => {
+    const weighted = EXERCISE_CATALOG.find((c) => c.name === name)?.kind === "weighted";
+    const w = weighted ? weightFor(name) : 0;
+    return { name, sets: Array.from({ length: sets }, () => ({ reps, weightKg: w, restSeconds: rest })) };
+  });
+
+  const title =
+    (goal === "get_lean" ? "Lean & Conditioning"
+      : goal === "maintain_weight" ? "Maintenance Full-Body"
+      : "Balanced Full-Body") + (obese ? " (Low-Impact)" : "");
+  const intro = obese
+    ? "Here's a low-impact, joint-friendly full-body session built around your profile."
+    : child
+      ? "Here's a technique-first, bodyweight session suited to you — focus on good form."
+      : "Here's a balanced workout picked for your profile — prioritise good form over load.";
+
+  return { intro, title, exercises };
+};
+
 export const recommendWorkout = async (req, res) => {
+  // Keep the profile accessible in catch so a total AI failure still yields a
+  // personalised, rule-based workout instead of an error.
+  let weightCap = 500;
+  let profile = {};
   try {
-    const { text: context, weightCap } = await buildUserContext(req.user.id);
+    const ctx = await buildUserContext(req.user.id);
+    weightCap = ctx.weightCap;
+    profile = ctx.profile;
+    const context = ctx.text;
 
     const systemPrompt = `You are a friendly, encouraging fitness coach. ${context}\n${CATALOG_RULE}`;
     const userPrompt =
@@ -268,13 +360,10 @@ export const recommendWorkout = async (req, res) => {
       maxTokens: 4096,
     });
 
-    // validate + clamp (weights capped to the user's age tier); fall back safely
-    // if nothing usable survives
+    // validate + clamp (weights capped to the user's age tier). If nothing
+    // usable survives, throw so the catch serves the rule-based fallback.
     const exercises = sanitizeExercises(parsed.exercises, weightCap);
-    if (!exercises.length) {
-      console.log("AI recommendation had no valid exercises after sanitation");
-      return res.status(500).json({ message: "Could not generate recommendation. Please try again." });
-    }
+    if (!exercises.length) throw new Error("AI recommendation had no valid exercises after sanitation");
 
     const recommendation = {
       intro: sanitizeText(parsed.intro, 300) || "Here's a workout for today.",
@@ -284,13 +373,22 @@ export const recommendWorkout = async (req, res) => {
 
     res.json({ recommendation });
   } catch (err) {
-    console.log("AI recommend error", err.message);
-    if (isBusyError(err)) {
-      return res.status(429).json({
-        message: "The AI coach is busy right now. Please try again in a few moments.",
+    // AI fully failed (Groq down / rate-limited / unparseable / no valid moves).
+    // Never error the user — serve a personalised, rule-based workout built from
+    // their profile so Smart Plan always returns something usable.
+    console.log("AI recommend failed; serving rule-based fallback:", err.message);
+    try {
+      const fb = buildFallbackWorkout(profile, weightCap);
+      const exercises = sanitizeExercises(fb.exercises, weightCap);
+      if (!exercises.length) throw new Error("fallback produced no exercises");
+      return res.json({
+        recommendation: { intro: fb.intro, title: fb.title, exercises },
+        source: "fallback", // lets the client note it's an offline/standby plan if desired
       });
+    } catch (fbErr) {
+      console.log("Fallback workout failed:", fbErr.message);
+      return res.status(500).json({ message: "Could not generate recommendation" });
     }
-    res.status(500).json({ message: "Could not generate recommendation" });
   }
 };
 
