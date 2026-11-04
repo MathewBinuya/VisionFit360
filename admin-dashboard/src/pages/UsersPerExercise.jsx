@@ -5,7 +5,8 @@ import { Section, StateBlock, Avatar, Pagination, TableScroll } from "../compone
 import api from "../lib/api";
 import { exerciseLabel, relativeTime, displayName } from "../lib/format";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 10;        // exercise list
+const USER_PAGE_SIZE = 5;    // users within an exercise (drill-down table)
 
 const EX_SORTS = {
   most: { label: "Most users", fn: (a, b) => b.userCount - a.userCount || b.sessions - a.sessions },
@@ -64,7 +65,7 @@ export default function UsersPerExercise() {
     setDetailLoading(true);
     api
       .get(`/exercise-usage/${encodeURIComponent(exercise)}/users`, {
-        params: { page: pageNum, limit: PAGE_SIZE, search: searchTerm || undefined },
+        params: { page: pageNum, limit: USER_PAGE_SIZE, search: searchTerm || undefined },
       })
       .then((res) => { setDetail(res.data); setDetailError(""); })
       .catch((err) => setDetailError(err.response?.data?.message || "Failed to load users"))
@@ -90,7 +91,7 @@ export default function UsersPerExercise() {
 
   const closeDetail = () => { setSelected(null); setDetail(null); };
 
-  const totalPages = detail ? Math.max(1, Math.ceil(detail.total / PAGE_SIZE)) : 1;
+  const totalPages = detail ? Math.max(1, Math.ceil(detail.total / USER_PAGE_SIZE)) : 1;
 
   return (
     <div className="layout">
