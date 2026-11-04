@@ -24,7 +24,15 @@ const auth = async (req, res, next) => {
   
 
 } catch (error) {
-    console.error("Error in auth middleware:", error);
+    // Expired/invalid tokens are NORMAL (tokens expire, clients send stale ones) —
+    // log a quiet one-liner, not a full stack trace. Only unexpected errors get the
+    // loud console.error. Either way the client gets a clean 401 and logs out.
+    const expected = ["TokenExpiredError", "JsonWebTokenError", "NotBeforeError"];
+    if (expected.includes(error?.name)) {
+      console.log(`Auth: rejected token (${error.name})`);
+    } else {
+      console.error("Error in auth middleware:", error);
+    }
     res.status(401).json({ message: "Token is not valid" });
   }
 };
