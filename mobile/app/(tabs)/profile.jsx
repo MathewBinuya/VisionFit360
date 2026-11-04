@@ -419,8 +419,6 @@ export default function Profile() {
     );
   }
 
-  const nameSettable = !nameLocked.firstName || !nameLocked.lastName || !nameLocked.middleName;
-
   return (
     <ScrollView
       style={styles.container}
@@ -522,13 +520,6 @@ export default function Profile() {
           </View>
           <Text style={styles.label}>Middle name (optional)</Text>
           {NameInput("middleName", "Middle name")}
-          {nameSettable && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 }}>
-              <Ionicons name="lock-closed" size={12} color={COLORS.placeholderText} />
-              <Text style={styles.lockedHint}>Your name can be set once. After you save, it can&apos;t be changed.</Text>
-            </View>
-          )}
-
           <Text style={styles.label}>Bio</Text>
           <View style={styles.inputContainer}>
             <TextInput
