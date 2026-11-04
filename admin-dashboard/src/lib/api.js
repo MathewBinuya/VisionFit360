@@ -1,9 +1,11 @@
 import axios from "axios";
 
-// your backend URL — same backend the mobile app uses
-// withCredentials so the browser sends/stores the httpOnly admin auth cookie.
+// Same-origin path — Vercel (prod) and Vite (dev) both proxy /api to the Render
+// backend. Talking to our own origin keeps the httpOnly auth cookie first-party,
+// so Brave/Safari third-party-cookie blocking can't break admin login.
+// withCredentials so the browser sends/stores that cookie.
 const api = axios.create({
-  baseURL: "https://visionfit-backend-cwxi.onrender.com/api/admin",
+  baseURL: "/api/admin",
   withCredentials: true,
 });
 
