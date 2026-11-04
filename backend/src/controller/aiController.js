@@ -8,13 +8,21 @@ import { EXERCISE_CATALOG, CATALOG_NAMES, canonicalExerciseName, catalogPromptLi
 // Gemini calls go through generateContent() in lib/gemini.js, which rotates
 // across all configured API keys and fails over to the next on a 429.
 
-const isRateLimitError = (err) => {
+// Errors that should surface to the user as a friendly "AI is busy, try again"
+// (429 quota AND transient 503 overload), rather than a generic 500. The
+// failover in lib/gemini.js already retries these across keys with backoff, so
+// reaching here means it stayed busy for the whole request.
+const isBusyError = (err) => {
   const msg = (err?.message || "").toLowerCase();
   return (
     msg.includes("429") ||
     msg.includes("rate") ||
     msg.includes("quota") ||
-    msg.includes("resource has been exhausted")
+    msg.includes("resource has been exhausted") ||
+    msg.includes("503") ||
+    msg.includes("overloaded") ||
+    msg.includes("unavailable") ||
+    msg.includes("high demand")
   );
 };
 
@@ -296,7 +304,7 @@ Recommend a single workout for today built specifically for THIS person — choo
     res.json({ recommendation });
   } catch (err) {
     console.log("AI recommend error", err.message);
-    if (isRateLimitError(err)) {
+    if (isBusyError(err)) {
       return res.status(429).json({
         message: "The AI coach is busy right now. Please try again in a few moments.",
       });
@@ -398,10 +406,13 @@ export const chatWithCoach = async (req, res) => {
       },
       {
         role: "model",
-        parts: [{ text: "Got it! I'm ready to help with your fitness questions." }],
+        parts: [{
+          text: "Got it! I'm ready to help with your fitness questions." +
+            (primerExtra ? `\n\nEarlier in this chat I shared this with you:\n${primerExtra}` : ""),
+        }],
       },
-      ...trimmed.map((m) => ({
-        role: m.role === "user" ? "user" : "model",
+      ...turns.map((m) => ({
+        role: m.role,
         parts: [{ text: m.text }],
       })),
     ];
@@ -436,7 +447,7 @@ export const chatWithCoach = async (req, res) => {
     res.json({ reply });
   } catch (err) {
     console.log("AI chat error", err.message);
-    if (isRateLimitError(err)) {
+    if (isBusyError(err)) {
       return res.status(429).json({
         message: "The AI coach is busy right now. Please try again in a few moments.",
       });

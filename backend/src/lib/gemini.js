@@ -41,6 +41,23 @@ const isRateLimit = (err) => {
   );
 };
 
+// Transient server-side errors (model overloaded / briefly unavailable). Unlike
+// a quota 429 these clear on their own, so we retry them the same way: sweep the
+// keys and back off between sweeps rather than failing the request immediately.
+const isTransient = (err) => {
+  const msg = (err?.message || "").toLowerCase();
+  return (
+    msg.includes("503") ||
+    msg.includes("overloaded") ||
+    msg.includes("unavailable") ||
+    msg.includes("high demand") ||
+    msg.includes("500") ||
+    msg.includes("internal error")
+  );
+};
+
+const isRetryable = (err) => isRateLimit(err) || isTransient(err);
+
 // Round-robin start so load spreads across keys instead of always hitting #1.
 let cursor = 0;
 
@@ -67,7 +84,7 @@ export const generateContent = async (request, { maxLoops = 2 } = {}) => {
       return result.response.text();
     } catch (err) {
       lastErr = err;
-      if (!isRateLimit(err)) throw err; // real error — don't burn the other keys
+      if (!isRetryable(err)) throw err; // real error — don't burn the other keys
       // Finished a full sweep of all keys and all were limited: wait, then retry.
       if ((attempt + 1) % total === 0) {
         const loop = Math.floor((attempt + 1) / total); // 1, 2, ...
