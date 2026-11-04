@@ -83,13 +83,29 @@ export default function History() {
     return weightUnit === "lb" ? kgToLb(n) : n;
   };
 
+  // The list endpoint is paginated (20/page by default). History must show EVERY
+  // completed workout — otherwise older records sit beyond the first page and,
+  // after deleting the visible ones, backfill into view and look like the deletes
+  // "came back". So page through until every record is pulled.
+  const fetchAllCompleted = async () => {
+    const limit = 100;
+    const all = [];
+    for (let page = 1; page <= 100; page++) {   // hard stop at 10k records
+      const res = await api.get(`/workouts?completed=true&page=${page}&limit=${limit}`);
+      const batch = res.data || [];
+      all.push(...batch);
+      if (batch.length < limit) break;          // last (short) page reached
+    }
+    return all;
+  };
+
   const loadHistory = async () => {
     // Workouts completed offline live in the pending queue until they sync — show
     // them here too (badged), so history reflects everything the user has done.
     const pending = await getPendingAsHistory(user);
     try {
-      const res = await api.get("/workouts?completed=true");
-      setWorkouts(mergeHistory(res.data, pending));
+      const all = await fetchAllCompleted();
+      setWorkouts(mergeHistory(all, pending));
     } catch (error) {
       console.log("Failed to load history", error.message);
       // Offline: still show what's completed locally.
