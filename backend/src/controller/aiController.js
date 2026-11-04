@@ -1,5 +1,5 @@
 import { SchemaType } from "@google/generative-ai";
-import { generateContent } from "../lib/gemini.js";
+import { generateJSON } from "../lib/gemini.js";
 import User from "../models/user.model.js";
 import Workout from "../models/workout.model.js";
 import { getUserAnalytics } from "../lib/workoutAnalytics.js";
@@ -274,18 +274,12 @@ export const recommendWorkout = async (req, res) => {
 ${CATALOG_RULE}
 Recommend a single workout for today built specifically for THIS person — choose exercises, intensity, sets, reps, weights and rest from their goal, BMI, estimated level, gender emphasis and recent training. Keep the intro short and motivating (one sentence) and make it reflect why this workout suits them. Include 4-6 exercises.`;
 
-    const raw = await generateContent({
+    // generateJSON parses the response and, if a model degenerates into invalid
+    // JSON, fails over to the next key/model (capped length bounds a runaway).
+    const parsed = await generateJSON({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", responseSchema: workoutRecommendationSchema },
+      generationConfig: { responseMimeType: "application/json", responseSchema: workoutRecommendationSchema, maxOutputTokens: 4096 },
     });
-
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (parseErr) {
-      console.log("Failed to parse AI JSON response:", raw);
-      return res.status(500).json({ message: "Could not generate recommendation. Please try again." });
-    }
 
     // validate + clamp (weights capped to the user's age tier); fall back safely
     // if nothing usable survives
@@ -417,18 +411,10 @@ export const chatWithCoach = async (req, res) => {
       })),
     ];
 
-    const raw = await generateContent({
+    const parsed = await generateJSON({
       contents: history,
-      generationConfig: { responseMimeType: "application/json", responseSchema: chatResponseSchema },
+      generationConfig: { responseMimeType: "application/json", responseSchema: chatResponseSchema, maxOutputTokens: 4096 },
     });
-
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (parseErr) {
-      console.log("Failed to parse AI chat JSON response:", raw);
-      return res.status(500).json({ message: "Could not get a reply" });
-    }
 
     const reply = sanitizeText(parsed.reply, 2000) || "Sorry, I couldn't put that together. Try again.";
 

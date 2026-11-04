@@ -100,9 +100,14 @@ let cursor = 0;
  * to `maxLoops` times) to ride out short provider overload spikes. A genuine
  * error (bad request, safety block, auth) throws immediately.
  * @param {object} request  passed straight to generateContent (e.g. { contents, generationConfig })
+ * @param {object} [opts]
+ * @param {number} [opts.maxLoops=3]
+ * @param {(text: string) => void} [opts.validate]  throws to REJECT a response
+ *   (e.g. unparseable JSON from a model that degenerated into a repetition loop)
+ *   — rejected responses fail over to the next key/model just like a 503.
  * @returns {Promise<string>} the response text
  */
-export const generateContent = async (request, { maxLoops = 3 } = {}) => {
+export const generateContent = async (request, { maxLoops = 3, validate } = {}) => {
   if (!keys.length) {
     throw new Error("Gemini is not configured (GEMINI_API_KEY / GEMINI_API_KEYS)");
   }
@@ -118,19 +123,25 @@ export const generateContent = async (request, { maxLoops = 3 } = {}) => {
         const idx = (cursor + k) % total;
         try {
           const result = await clients[mi][idx].generateContent(request);
+          const text = result.response.text();
+          // A validate() throw means the content is unusable (e.g. a lite model
+          // looped and produced invalid JSON) — reject and fail over, don't return it.
+          if (validate) validate(text);
           cursor = (idx + 1) % total; // next call starts at the following key
-          return result.response.text();
+          return text;
         } catch (err) {
           lastErr = err;
+          if (err?.isValidationError) { retryableSeen = true; continue; } // bad content → next key/model
           if (isModelUnavailable(err)) { modelGone = true; break; } // → next model
           if (!isRetryable(err)) throw err; // real error — don't burn the rest
           retryableSeen = true;
         }
       }
       // This model failed on every key this sweep — log WHY so a prod failover
-      // is explainable (model-gone/404 vs busy 429/503) instead of silent.
+      // is explainable (model-gone/404, busy 429/503, bad content) instead of silent.
       const why = (lastErr?.message || "").replace(/\s+/g, " ").slice(0, 160);
-      console.log(`Gemini: ${MODEL_NAMES[mi]} failed this sweep (${modelGone ? "unavailable/404" : "busy 429/503"}) — ${why}`);
+      const kind = modelGone ? "unavailable/404" : lastErr?.isValidationError ? "bad content" : "busy 429/503";
+      console.log(`Gemini: ${MODEL_NAMES[mi]} failed this sweep (${kind}) — ${why}`);
       if (modelGone) continue; // try the next fallback model
     }
 
@@ -141,4 +152,27 @@ export const generateContent = async (request, { maxLoops = 3 } = {}) => {
   }
 
   throw lastErr;
+};
+
+/**
+ * Like generateContent but for JSON responses: parses the result, and if a model
+ * returns unparseable JSON (a lite model degenerating into a repetition loop is
+ * the common cause) it rejects that response and fails over to the next
+ * key/model instead of hard-failing the request.
+ * @returns {Promise<any>} the parsed JSON
+ */
+export const generateJSON = async (request, opts = {}) => {
+  const text = await generateContent(request, {
+    ...opts,
+    validate: (t) => {
+      try {
+        JSON.parse(t);
+      } catch {
+        const e = new Error("AI returned unparseable JSON");
+        e.isValidationError = true;
+        throw e;
+      }
+    },
+  });
+  return JSON.parse(text);
 };
