@@ -1,9 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// gemini-2.5-flash was retired for new API projects (404 "no longer available
-// to new users"), so default to the current flash model. Overridable via env so
-// a future model bump needs no code change / redeploy.
-const MODEL_NAME = (process.env.GEMINI_MODEL || "gemini-3.8-flash").trim();
+// Model(s) to use, in preference order. gemini-2.5-flash was retired for new API
+// projects (404 "no longer available to new users"), so default to the current
+// flash model. GEMINI_MODEL may be a comma-separated list — if the first model
+// is unavailable (404) or stays overloaded (503) across every key, we fall over
+// to the next model in the list. All of this is env-overridable so a future
+// model change needs no code change / redeploy.
+// NOTE: gemini-3.7-flash is NOT a useful fallback — Google auto-forwards it to
+// gemini-3.8-flash, so it shares the same capacity. Use a genuinely different
+// model (e.g. a lite/pro variant your account can access) if you add one.
+const MODEL_NAMES = (process.env.GEMINI_MODEL || "gemini-3.8-flash")
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
 
 // Collect every configured key: GEMINI_API_KEY (single, legacy) plus
 // GEMINI_API_KEYS (comma-separated). The order here is the failover order.
@@ -20,16 +29,18 @@ const keys = [
 if (!keys.length) {
   console.log("GEMINI NOT CONFIGURED: set GEMINI_API_KEY or GEMINI_API_KEYS");
 } else {
-  console.log(`Gemini ready (${keys.length} key${keys.length > 1 ? "s" : ""}, model ${MODEL_NAME})`);
+  console.log(
+    `Gemini ready (${keys.length} key${keys.length > 1 ? "s" : ""}, model${MODEL_NAMES.length > 1 ? "s" : ""} ${MODEL_NAMES.join(" → ")})`
+  );
 }
 
-// One model client per key.
-const models = keys.map((key) =>
-  new GoogleGenerativeAI(key).getGenerativeModel({ model: MODEL_NAME })
+// clients[modelIndex][keyIndex] — one client per (model, key) pair.
+const clients = MODEL_NAMES.map((name) =>
+  keys.map((key) => new GoogleGenerativeAI(key).getGenerativeModel({ model: name }))
 );
 
-// Back-compat: anything still importing `model` gets the first key's client.
-export const model = models[0];
+// Back-compat: anything still importing `model` gets the first (model, key) client.
+export const model = clients[0] && clients[0][0];
 
 const isRateLimit = (err) => {
   const msg = (err?.message || "").toLowerCase();
@@ -42,8 +53,8 @@ const isRateLimit = (err) => {
 };
 
 // Transient server-side errors (model overloaded / briefly unavailable). Unlike
-// a quota 429 these clear on their own, so we retry them the same way: sweep the
-// keys and back off between sweeps rather than failing the request immediately.
+// a quota 429 these clear on their own, so we retry: sweep the keys (and any
+// fallback models) and back off between sweeps rather than failing immediately.
 const isTransient = (err) => {
   const msg = (err?.message || "").toLowerCase();
   return (
@@ -56,41 +67,68 @@ const isTransient = (err) => {
   );
 };
 
+// The model itself is gone/unknown (retired, typo'd env, no access). Retrying the
+// SAME model on another key won't help — skip straight to the next model instead.
+const isModelUnavailable = (err) => {
+  const msg = (err?.message || "").toLowerCase();
+  return (
+    msg.includes("404") ||
+    msg.includes("not found") ||
+    msg.includes("not available") ||
+    msg.includes("no longer available")
+  );
+};
+
 const isRetryable = (err) => isRateLimit(err) || isTransient(err);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Round-robin start so load spreads across keys instead of always hitting #1.
 let cursor = 0;
 
 /**
- * Generate content with multi-key failover.
- * Tries a key; on a rate-limit/quota (429) error it moves to the NEXT key.
- * After sweeping every key it backs off briefly and sweeps again (up to
- * `maxLoops` times). Non-rate-limit errors throw immediately.
- * @param {object} request  passed straight to model.generateContent (e.g. { contents, generationConfig })
+ * Generate content with multi-key AND multi-model failover.
+ * For each configured model (in order) it sweeps every key; a rate-limit/quota
+ * (429) or transient overload (503) moves on to the next key, and a model-gone
+ * (404) jumps to the next model. After a full sweep of all models×keys where at
+ * least one error was transient/rate-limited, it backs off and sweeps again (up
+ * to `maxLoops` times) to ride out short provider overload spikes. A genuine
+ * error (bad request, safety block, auth) throws immediately.
+ * @param {object} request  passed straight to generateContent (e.g. { contents, generationConfig })
  * @returns {Promise<string>} the response text
  */
-export const generateContent = async (request, { maxLoops = 2 } = {}) => {
-  if (!models.length) {
+export const generateContent = async (request, { maxLoops = 3 } = {}) => {
+  if (!keys.length) {
     throw new Error("Gemini is not configured (GEMINI_API_KEY / GEMINI_API_KEYS)");
   }
-  const total = models.length;
+  const total = keys.length;
   let lastErr;
 
-  for (let attempt = 0; attempt < total * maxLoops; attempt++) {
-    const idx = (cursor + attempt) % total;
-    try {
-      const result = await models[idx].generateContent(request);
-      cursor = (idx + 1) % total; // next call starts at the following key
-      return result.response.text();
-    } catch (err) {
-      lastErr = err;
-      if (!isRetryable(err)) throw err; // real error — don't burn the other keys
-      // Finished a full sweep of all keys and all were limited: wait, then retry.
-      if ((attempt + 1) % total === 0) {
-        const loop = Math.floor((attempt + 1) / total); // 1, 2, ...
-        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, loop - 1)));
+  for (let loop = 0; loop < maxLoops; loop++) {
+    let retryableSeen = false;
+
+    for (let mi = 0; mi < clients.length; mi++) {
+      let modelGone = false;
+      for (let k = 0; k < total; k++) {
+        const idx = (cursor + k) % total;
+        try {
+          const result = await clients[mi][idx].generateContent(request);
+          cursor = (idx + 1) % total; // next call starts at the following key
+          return result.response.text();
+        } catch (err) {
+          lastErr = err;
+          if (isModelUnavailable(err)) { modelGone = true; break; } // → next model
+          if (!isRetryable(err)) throw err; // real error — don't burn the rest
+          retryableSeen = true;
+        }
       }
+      if (modelGone) continue; // try the next fallback model
     }
+
+    // Nothing worth retrying (e.g. every model 404'd) — stop now.
+    if (!retryableSeen) break;
+    // Back off before the next sweep (capped), to ride out a provider spike.
+    if (loop < maxLoops - 1) await sleep(Math.min(4000, 1000 * Math.pow(2, loop)));
   }
+
   throw lastErr;
 };
