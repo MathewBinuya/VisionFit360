@@ -28,7 +28,7 @@ export default function GetStarted() {
     >
       <FadeInView style={styles.content}>
         <Text style={styles.brand}>VISIONFIT360</Text>
-        <Text style={styles.title}>Start your{"\n"}journey</Text>
+        <Text style={styles.title}>Start{"\n"}training</Text>
         <Text style={styles.subtitle}>
           AI coaching, AR rep counting and progress tracking — in one app.
         </Text>

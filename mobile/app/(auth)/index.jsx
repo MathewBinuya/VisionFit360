@@ -71,7 +71,7 @@ const handleLogin = async () => {
        <FadeInView style={styles.card}>
         <Text style={styles.brand}>VISIONFIT360</Text>
         <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Log in to continue your journey</Text>
+        <Text style={styles.subtitle}>Log in to continue</Text>
        <View style={styles.formContainer}>
                   {/* Email */}
         <View style={styles.inputGroup}>
