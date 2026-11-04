@@ -1,36 +1,12 @@
 import { SchemaType } from "@google/generative-ai";
-import { model } from "../lib/gemini.js";
+import { generateContent } from "../lib/gemini.js";
 import User from "../models/user.model.js";
 import Workout from "../models/workout.model.js";
 import { getUserAnalytics } from "../lib/workoutAnalytics.js";
 import { EXERCISE_CATALOG, CATALOG_NAMES, canonicalExerciseName, catalogPromptLines } from "../lib/exerciseCatalog.js";
 
-//  helper - call Gemini with automatic retry on rate limit (429)
-const generateWithRetry = async (contents, generationConfig, maxRetries = 3) => {
-  let lastErr;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const result = await model.generateContent({ contents, generationConfig });
-      return result.response.text();
-    } catch (err) {
-      lastErr = err;
-      const msg = (err?.message || "").toLowerCase();
-      const isRateLimit =
-        msg.includes("429") ||
-        msg.includes("rate") ||
-        msg.includes("quota") ||
-        msg.includes("resource has been exhausted");
-
-      if (isRateLimit && attempt < maxRetries) {
-        const waitMs = 1000 * Math.pow(2, attempt);
-        await new Promise((r) => setTimeout(r, waitMs));
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw lastErr;
-};
+// Gemini calls go through generateContent() in lib/gemini.js, which rotates
+// across all configured API keys and fails over to the next on a 429.
 
 const isRateLimitError = (err) => {
   const msg = (err?.message || "").toLowerCase();
@@ -290,10 +266,10 @@ export const recommendWorkout = async (req, res) => {
 ${CATALOG_RULE}
 Recommend a single workout for today built specifically for THIS person — choose exercises, intensity, sets, reps, weights and rest from their goal, BMI, estimated level, gender emphasis and recent training. Keep the intro short and motivating (one sentence) and make it reflect why this workout suits them. Include 4-6 exercises.`;
 
-    const raw = await generateWithRetry(
-      [{ role: "user", parts: [{ text: prompt }] }],
-      { responseMimeType: "application/json", responseSchema: workoutRecommendationSchema }
-    );
+    const raw = await generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json", responseSchema: workoutRecommendationSchema },
+    });
 
     let parsed;
     try {
@@ -396,10 +372,10 @@ export const chatWithCoach = async (req, res) => {
       })),
     ];
 
-    const raw = await generateWithRetry(
-      history,
-      { responseMimeType: "application/json", responseSchema: chatResponseSchema }
-    );
+    const raw = await generateContent({
+      contents: history,
+      generationConfig: { responseMimeType: "application/json", responseSchema: chatResponseSchema },
+    });
 
     let parsed;
     try {
