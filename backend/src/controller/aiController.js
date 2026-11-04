@@ -1,18 +1,21 @@
-import { SchemaType } from "@google/generative-ai";
-import { generateJSON } from "../lib/gemini.js";
+import { generateJSON } from "../lib/groq.js";
 import User from "../models/user.model.js";
 import Workout from "../models/workout.model.js";
 import { getUserAnalytics } from "../lib/workoutAnalytics.js";
-import { EXERCISE_CATALOG, CATALOG_NAMES, canonicalExerciseName, catalogPromptLines } from "../lib/exerciseCatalog.js";
+import { EXERCISE_CATALOG, canonicalExerciseName, catalogPromptLines } from "../lib/exerciseCatalog.js";
 
-// Gemini calls go through generateContent() in lib/gemini.js, which rotates
-// across all configured API keys and fails over to the next on a 429.
+// AI calls go through generateJSON() in lib/groq.js (Groq / Llama 3.3 70B,
+// OpenAI-compatible), which rotates across all configured API keys, fails over
+// on 429/5xx, and re-tries on unparseable JSON. Output is still untrusted and
+// is validated/clamped below before use.
 
 // Errors that should surface to the user as a friendly "AI is busy, try again"
-// (429 quota AND transient 503 overload), rather than a generic 500. The
-// failover in lib/gemini.js already retries these across keys with backoff, so
+// (429 rate limit / quota and transient 5xx), rather than a generic 500. The
+// failover in lib/groq.js already retries these across keys with backoff, so
 // reaching here means it stayed busy for the whole request.
 const isBusyError = (err) => {
+  const status = err?.status || 0;
+  if ([429, 500, 502, 503, 504].includes(status)) return true;
   const msg = (err?.message || "").toLowerCase();
   return (
     msg.includes("429") ||
@@ -21,8 +24,7 @@ const isBusyError = (err) => {
     msg.includes("resource has been exhausted") ||
     msg.includes("503") ||
     msg.includes("overloaded") ||
-    msg.includes("unavailable") ||
-    msg.includes("high demand")
+    msg.includes("unavailable")
   );
 };
 
@@ -230,55 +232,38 @@ const sanitizeExercises = (exercises, maxWeightKg = 500) =>
     })
     .filter((e) => e.sets.length > 0);
 
-const exerciseNameSchema = { type: SchemaType.STRING, format: "enum", enum: CATALOG_NAMES };
-
 const sanitizeText = (t, max) =>
   (typeof t === "string" ? t.trim().slice(0, max) : "");
 
-const workoutRecommendationSchema = {
-  type: SchemaType.OBJECT,
-  properties: {
-    intro: { type: SchemaType.STRING, description: "A short, friendly one-line intro to the workout" },
-    title: { type: SchemaType.STRING, description: "A short workout title, e.g. 'Upper Body Day'" },
-    exercises: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          name: exerciseNameSchema,
-          sets: {
-            type: SchemaType.ARRAY,
-            items: {
-              type: SchemaType.OBJECT,
-              properties: {
-                reps: { type: SchemaType.NUMBER },
-                weightKg: { type: SchemaType.NUMBER, description: "0 for bodyweight exercises" },
-                restSeconds: { type: SchemaType.NUMBER },
-              },
-              required: ["reps", "weightKg", "restSeconds"],
-            },
-          },
-        },
-        required: ["name", "sets"],
-      },
-    },
-  },
-  required: ["intro", "title", "exercises"],
-};
+// Groq/Llama use JSON mode (valid JSON guaranteed) but NOT a strict schema, so
+// we spell the exact shape in the prompt. The sanitize/clamp layer above is the
+// real enforcer — names are canonicalised to the catalog, weights clamped, etc.
+const WORKOUT_JSON_SHAPE =
+  `Respond with ONLY a valid JSON object (no markdown, no code fences) of exactly this shape:\n` +
+  `{"intro": "short friendly one-line intro", "title": "short workout title", "exercises": [{"name": "<a supported exercise name, spelled EXACTLY as listed above>", "sets": [{"reps": <integer>, "weightKg": <number, 0 for bodyweight/cardio>, "restSeconds": <integer>}]}]}\n` +
+  `Include 4-6 exercises. Use ONLY supported exercise names.`;
+
+const CHAT_JSON_SHAPE =
+  `Respond with ONLY a valid JSON object (no markdown, no code fences):\n` +
+  `{"responseType": "chat" or "workout", "reply": "<always present; for chat the full answer, for workout a short one-sentence intro>", "title": "<only for workout>", "exercises": [<only for workout; same shape as a workout's exercises: {"name","sets":[{"reps","weightKg","restSeconds"}]}>]}\n` +
+  `Set responseType to "workout" ONLY when giving a workout/routine/plan; otherwise "chat" and omit title/exercises. Use ONLY supported exercise names.`;
 
 export const recommendWorkout = async (req, res) => {
   try {
     const { text: context, weightCap } = await buildUserContext(req.user.id);
 
-    const prompt = `You are a friendly, encouraging fitness coach. ${context}
-${CATALOG_RULE}
-Recommend a single workout for today built specifically for THIS person — choose exercises, intensity, sets, reps, weights and rest from their goal, BMI, estimated level, gender emphasis and recent training. Keep the intro short and motivating (one sentence) and make it reflect why this workout suits them. Include 4-6 exercises.`;
+    const systemPrompt = `You are a friendly, encouraging fitness coach. ${context}\n${CATALOG_RULE}`;
+    const userPrompt =
+      `Recommend a single workout for today built specifically for THIS person — choose exercises, intensity, sets, reps, weights and rest from their goal, BMI, estimated level, gender emphasis and recent training. Keep the intro short and motivating (one sentence) and make it reflect why this workout suits them.\n\n${WORKOUT_JSON_SHAPE}`;
 
-    // generateJSON parses the response and, if a model degenerates into invalid
-    // JSON, fails over to the next key/model (capped length bounds a runaway).
+    // generateJSON parses the response and, if a model returns invalid JSON,
+    // fails over to the next key/model (capped length bounds a runaway).
     const parsed = await generateJSON({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", responseSchema: workoutRecommendationSchema, maxOutputTokens: 4096 },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      maxTokens: 2048,
     });
 
     // validate + clamp (weights capped to the user's age tier); fall back safely
@@ -307,64 +292,19 @@ Recommend a single workout for today built specifically for THIS person — choo
   }
 };
 
-// schema for chat — covers BOTH a normal conversational reply and a workout
-// recommendation given mid-chat, so "give me a leg day" becomes trackable too
-const chatResponseSchema = {
-  type: SchemaType.OBJECT,
-  properties: {
-    responseType: {
-      type: SchemaType.STRING,
-      enum: ["chat", "workout"],
-      description: "\"workout\" if the user is asking for a workout, routine, or exercise plan. \"chat\" for anything else.",
-    },
-    reply: {
-      type: SchemaType.STRING,
-      description: "Always include this. For \"chat\", the full answer. For \"workout\", a short one-sentence friendly intro.",
-    },
-    title: {
-      type: SchemaType.STRING,
-      description: "Workout title — only when responseType is \"workout\"",
-    },
-    exercises: {
-      type: SchemaType.ARRAY,
-      description: "Only when responseType is \"workout\" — omit for \"chat\"",
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          name: exerciseNameSchema,
-          sets: {
-            type: SchemaType.ARRAY,
-            items: {
-              type: SchemaType.OBJECT,
-              properties: {
-                reps: { type: SchemaType.NUMBER },
-                weightKg: { type: SchemaType.NUMBER, description: "0 for bodyweight exercises" },
-                restSeconds: { type: SchemaType.NUMBER },
-              },
-              required: ["reps", "weightKg", "restSeconds"],
-            },
-          },
-        },
-        required: ["name", "sets"],
-      },
-    },
-  },
-  required: ["responseType", "reply"],
-};
+// Chat covers BOTH a normal conversational reply and a workout recommendation
+// given mid-chat (so "give me a leg day" becomes trackable too) — see
+// CHAT_JSON_SHAPE above for the exact JSON shape the model must return.
 
-// Gemini requires `contents` to alternate user/model turns, and after our two
-// priming turns (user + model) the client history must resume with a user turn.
-// The client history breaks this in two ways: its FIRST turn is the auto
-// recommendation (a `model` turn), and deleting messages in the UI can leave two
-// same-role turns adjacent. Both produce a user→model→model→… sequence that
-// Gemini rejects with a 400 (surfacing as "couldn't respond"). Normalise by
-// collapsing consecutive same-role turns, then lifting any leading model turn
-// out so the remaining turns begin with a user turn and strictly alternate; the
-// lifted text is folded back into the priming model turn to keep the context.
+// Normalise the client history for a system+user/assistant chat: map roles,
+// collapse consecutive same-role turns, and lift any leading assistant turn
+// (the auto-recommendation, which starts every chat) out so the turns begin
+// with a user turn and alternate. The lifted text is returned separately to
+// fold into the system prompt as context.
 const normalizeChatTurns = (messages) => {
   const mapped = (Array.isArray(messages) ? messages : [])
     .map((m) => ({
-      role: m?.role === "user" ? "user" : "model",
+      role: m?.role === "user" ? "user" : "assistant",
       text: typeof m?.text === "string" ? m.text.trim() : "",
     }))
     .filter((m) => m.text);
@@ -377,7 +317,7 @@ const normalizeChatTurns = (messages) => {
   }
 
   let primerExtra = "";
-  while (collapsed.length && collapsed[0].role === "model") {
+  while (collapsed.length && collapsed[0].role === "assistant") {
     primerExtra += (primerExtra ? "\n\n" : "") + collapsed.shift().text;
   }
 
@@ -393,28 +333,24 @@ export const chatWithCoach = async (req, res) => {
       Array.isArray(messages) ? messages.slice(-10) : []
     );
 
-    const history = [
-      {
-        role: "user",
-        parts: [{ text: `You are a friendly fitness coach for the VisionFit app. ${context}\n${CATALOG_RULE}\nAnswer the user's fitness questions concisely and practically, personalised to their profile. Keep responses short. If the user asks for a workout, routine, or exercise plan, set responseType to "workout" and provide structured exercises tailored to them, honouring any muscle group or exercise they ask for. If they ask for an exercise VisionFit doesn't support, briefly say so and use the closest supported alternative. For anything else, set responseType to "chat".\n\nSCOPE — IMPORTANT: You ONLY discuss fitness, exercise, workouts, training, nutrition and general wellness (sleep, hydration, recovery). If the user asks about anything unrelated — programming/code, general trivia, maths, news, politics, other apps, etc. — do NOT answer it. Politely decline in a single short sentence and steer them back to their training (set responseType to "chat"). For medical or injury concerns, give only general, non-diagnostic guidance and suggest they consult a qualified professional.` }],
-      },
-      {
-        role: "model",
-        parts: [{
-          text: "Got it! I'm ready to help with your fitness questions." +
-            (primerExtra ? `\n\nEarlier in this chat I shared this with you:\n${primerExtra}` : ""),
-        }],
-      },
-      ...turns.map((m) => ({
-        role: m.role,
-        parts: [{ text: m.text }],
-      })),
-    ];
+    const systemPrompt =
+      `You are a friendly fitness coach for the VisionFit app. ${context}\n${CATALOG_RULE}\n` +
+      `Answer the user's fitness questions concisely and practically, personalised to their profile. Keep responses short. If the user asks for a workout, routine, or exercise plan, set responseType to "workout" and provide structured exercises tailored to them, honouring any muscle group or exercise they ask for. If they ask for an exercise VisionFit doesn't support, briefly say so and use the closest supported alternative. For anything else, set responseType to "chat".\n\n` +
+      `SCOPE — IMPORTANT: You ONLY discuss fitness, exercise, workouts, training, nutrition and general wellness (sleep, hydration, recovery). If the user asks about anything unrelated — programming/code, general trivia, maths, news, politics, other apps, etc. — do NOT answer it. Politely decline in a single short sentence and steer them back to their training (set responseType to "chat"). For medical or injury concerns, give only general, non-diagnostic guidance and suggest they consult a qualified professional.` +
+      (primerExtra ? `\n\nEarlier in this chat you shared this workout with the user:\n${primerExtra}` : "") +
+      `\n\n${CHAT_JSON_SHAPE}`;
 
-    const parsed = await generateJSON({
-      contents: history,
-      generationConfig: { responseMimeType: "application/json", responseSchema: chatResponseSchema, maxOutputTokens: 4096 },
-    });
+    const chatMessages = [
+      { role: "system", content: systemPrompt },
+      ...turns.map((m) => ({ role: m.role, content: m.text })),
+    ];
+    // Defensive: the API wants at least one user turn. The app always sends one,
+    // but guard against a history that normalised to assistant-only.
+    if (!chatMessages.some((m) => m.role === "user")) {
+      return res.json({ reply: "Ask me anything about your training!" });
+    }
+
+    const parsed = await generateJSON({ messages: chatMessages, maxTokens: 2048 });
 
     const reply = sanitizeText(parsed.reply, 2000) || "Sorry, I couldn't put that together. Try again.";
 
