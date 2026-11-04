@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
 import { StatCard, StateBlock, Section, TableScroll, Pagination } from "../components/ui";
-import { LineChart } from "../components/Charts";
+import { LineChart, ColumnChart } from "../components/Charts";
 import api from "../lib/api";
 
 const TABS = ["Recent", "Monthly", "Yearly"];
@@ -70,6 +70,11 @@ function MonthlyView({ years }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // short x-axis labels for the charts (e.g. "W1"), with the full range in the tooltip
+  const weekCols = (key) =>
+    (data?.weeks || []).map((w) => ({ label: `W${w.week}`, value: w[key] }));
+  const hasWeeks = data && data.weeks.length > 0;
+
   return (
     <>
       <div className="toolbar">
@@ -80,6 +85,19 @@ function MonthlyView({ years }) {
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
+
+      {hasWeeks && (
+        <div className="grid-2" style={{ marginBottom: 16 }}>
+          <div className="card">
+            <h3 className="card-title">New users · by week</h3>
+            <ColumnChart data={weekCols("newUsers")} unit="new users" />
+          </div>
+          <div className="card">
+            <h3 className="card-title">Completed sessions · by week</h3>
+            <ColumnChart data={weekCols("completedSessions")} unit="sessions" />
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h3 className="card-title">{MONTHS[month - 1]} {year}</h3>
@@ -141,6 +159,11 @@ function YearlyView({ years }) {
   const totalPages = Math.max(1, Math.ceil(months.length / MONTHS_PER_PAGE));
   const pageMonths = months.slice((page - 1) * MONTHS_PER_PAGE, page * MONTHS_PER_PAGE);
 
+  // charts always show the full year (all 12 months), independent of table paging.
+  // Short x labels (3-letter month) with the full label in the tooltip.
+  const monthCols = (key) =>
+    months.map((m) => ({ label: (m.label || "").slice(0, 3), value: m[key] }));
+
   return (
     <>
       <div className="toolbar">
@@ -157,6 +180,19 @@ function YearlyView({ years }) {
         <StatCard label={`Total new users · ${year}`} value={data?.totals?.newUsers ?? "—"} />
         <StatCard label={`Total completed sessions · ${year}`} value={data?.totals?.completedSessions ?? "—"} />
       </div>
+
+      {months.length > 0 && (
+        <div className="grid-2" style={{ marginBottom: 16 }}>
+          <div className="card">
+            <h3 className="card-title">New users · {year}</h3>
+            <ColumnChart data={monthCols("newUsers")} unit="new users" />
+          </div>
+          <div className="card">
+            <h3 className="card-title">Completed sessions · {year}</h3>
+            <ColumnChart data={monthCols("completedSessions")} unit="sessions" />
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h3 className="card-title">{year} by month</h3>

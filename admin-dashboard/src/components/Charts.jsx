@@ -98,6 +98,78 @@ export function LineChart({ data, height = 190 }) {
   );
 }
 
+// ---- Vertical column chart (single series over a few labelled categories) ----
+// Used for the monthly (by week) and yearly (by month) analytics. One measure
+// per chart on one axis — two measures (e.g. new users vs sessions) go in two
+// separate charts, never a dual axis.
+export function ColumnChart({ data, height = 200, unit = "" }) {
+  // data: [{ label, value }]
+  const [ref, w] = useWidth();
+  const [hover, setHover] = useState(null);
+
+  const padL = 34, padR = 12, padT = 14, padB = 28;
+  const innerW = Math.max(w - padL - padR, 10);
+  const innerH = height - padT - padB;
+
+  const n = data.length;
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const band = n > 0 ? innerW / n : innerW;
+  const barW = Math.min(44, band * 0.6);
+  const cx = (i) => padL + band * i + band / 2;        // centre of each band
+  const barH = (v) => (v / max) * innerH;
+  const baseY = padT + innerH;
+  const y0 = (v) => padT + innerH - (v / max) * innerH; // y pixel for a gridline value
+
+  const ticks = [0, Math.round(max / 2), max].filter((v, i, a) => a.indexOf(v) === i);
+
+  return (
+    <div ref={ref} className="chart-wrap" style={{ position: "relative" }}>
+      {w > 0 && (
+        <svg width={w} height={height} onMouseLeave={() => setHover(null)}>
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={padL} x2={w - padR} y1={y0(t)} y2={y0(t)} className="chart-grid" />
+              <text x={padL - 6} y={y0(t) + 3} textAnchor="end" className="chart-tick">{t}</text>
+            </g>
+          ))}
+          {data.map((d, i) => {
+            const h = barH(d.value);
+            return (
+              <g key={i}>
+                {/* full-height hit target so the whole column catches the hover */}
+                <rect
+                  x={cx(i) - band / 2} y={padT} width={band} height={innerH}
+                  fill="transparent"
+                  onMouseEnter={() => setHover(i)}
+                />
+                <rect
+                  x={cx(i) - barW / 2} y={baseY - h} width={barW} height={Math.max(h, 0)}
+                  rx="3" fill={ACCENT}
+                  fillOpacity={hover == null || hover === i ? 1 : 0.35}
+                  style={{ transition: "fill-opacity 0.12s" }}
+                  pointerEvents="none"
+                />
+                <text x={cx(i)} y={height - 8} textAnchor="middle" className="chart-tick">
+                  {d.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      )}
+      {hover != null && data[hover] && w > 0 && (
+        <div
+          className="chart-tooltip"
+          style={{ left: Math.min(Math.max(cx(hover), 48), w - 48), top: 4 }}
+        >
+          <strong>{data[hover].value}</strong>{unit ? ` ${unit}` : ""}
+          <div className="chart-tooltip-sub">{data[hover].label}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---- Horizontal bar chart (ranked categories, single series) ----
 export function BarChart({ data, valueSuffix = "" }) {
   // data: [{ label, value, sub }]
