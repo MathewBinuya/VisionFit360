@@ -13,7 +13,7 @@ const loadSetting = () =>
   Setting.findOneAndUpdate(
     { key: "app" },
     { $setOnInsert: { key: "app" } },
-    { new: true, upsert: true }
+    { returnDocument: "after", upsert: true }
   );
 
 // Current settings, served from the short-lived cache when fresh. Falls back to
@@ -43,7 +43,7 @@ export const setMaintenance = async ({ enabled, message, updatedBy }) => {
   cache = await Setting.findOneAndUpdate(
     { key: "app" },
     { $set: update, $setOnInsert: { key: "app" } },
-    { new: true, upsert: true }
+    { returnDocument: "after", upsert: true }
   );
   cachedAt = Date.now();
   return cache;

@@ -625,7 +625,7 @@ export const createExercise = async (req, res) => {
 
 export const updateExercise = async (req, res) => {
   try {
-    const exercise = await Exercise.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const exercise = await Exercise.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
     if (!exercise) return res.status(404).json({ message: "Exercise not found" });
     res.json(exercise);
   } catch (error) {
@@ -1040,7 +1040,7 @@ export const updateUserStatus = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { status },
-      { new: true }
+      { returnDocument: "after" }
     ).select(SAFE_USER_FIELDS);
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);

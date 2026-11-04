@@ -97,7 +97,7 @@ export const updateWorkout = async (req, res) => {
     const workout = await Workout.findOneAndUpdate(
       { _id: req.params.id, user: req.user.id },
       { $set: built.value },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
     if (!workout) return res.status(404).json({ message: "Not found" });
     res.json(workout);

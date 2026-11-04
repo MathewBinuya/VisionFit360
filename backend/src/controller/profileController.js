@@ -48,7 +48,7 @@ export const updateProfile = async (req, res) => {
     }
 
     const user = await User.findByIdAndUpdate(req.user.id, updates, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     }).select("-password");
 
@@ -69,7 +69,7 @@ export const uploadPhoto = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { photo: req.file.path },
-      { new: true }
+      { returnDocument: "after" }
     ).select("-password");
 
     res.json({ photo: user.photo, user });
@@ -84,7 +84,7 @@ export const deletePhoto = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { photo: "" },
-      { new: true }
+      { returnDocument: "after" }
     ).select("-password");
 
     res.json({ message: "Photo removed", user });
@@ -113,7 +113,7 @@ export const completeOnBoarding = async (req, res) => {
       const user = await User.findByIdAndUpdate(
         req.user.id,
         { onBoardingComplete: true },
-        { new: true }
+        { returnDocument: "after" }
       ).select("-password");
 
       res.json(user);
