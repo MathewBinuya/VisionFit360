@@ -36,21 +36,38 @@ if (!keys.length) {
   );
 }
 
+// Classify by HTTP status (callGroq always sets err.status) — NOT by message
+// substrings, which caused false positives (e.g. "gene*rate* JSON" matching
+// /rate/ and treating a 400 as a rate-limit). A network error has no status.
 const statusOf = (err) => err?.status || 0;
-const isRateLimit = (err) => statusOf(err) === 429 || /\b429\b|rate|quota/i.test(err?.message || "");
+const isRateLimit = (err) => statusOf(err) === 429;
 const isTransient = (err) =>
-  [500, 502, 503, 504].includes(statusOf(err)) || /\b50[0-4]\b|overloaded|unavailable/i.test(err?.message || "");
-const isModelUnavailable = (err) =>
-  statusOf(err) === 404 || /not found|does not exist|decommissioned|not available/i.test(err?.message || "");
+  [500, 502, 503, 504].includes(statusOf(err)) ||
+  (!statusOf(err) && /fetch failed|network|timeout|socket|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(err?.message || ""));
+const isModelUnavailable = (err) => statusOf(err) === 404;
 const isRetryable = (err) => isRateLimit(err) || isTransient(err);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Code fences shouldn't appear in JSON mode, but strip them defensively so a
-// ```json ... ``` wrapper never breaks JSON.parse.
+// Pull a JSON object out of a model response. We do NOT use Groq's strict JSON
+// mode (response_format), because reasoning models like gpt-oss emit reasoning
+// first and Groq then 400s with "Failed to generate JSON". Instead we extract:
+// strip any ``` fence, try a direct parse, then fall back to slicing from the
+// first "{" to the last "}" so a reasoning/prose preamble around the JSON is
+// tolerated. Unparseable output is rejected by generateJSON and failed over.
 const stripFences = (t) => {
   const s = String(t || "").trim();
   const m = s.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
   return m ? m[1].trim() : s;
+};
+const extractJSON = (t) => {
+  const s = stripFences(String(t || "").trim());
+  try {
+    return JSON.parse(s);
+  } catch {}
+  const start = s.indexOf("{");
+  const end = s.lastIndexOf("}");
+  if (start !== -1 && end > start) return JSON.parse(s.slice(start, end + 1));
+  throw new Error("no JSON object in response");
 };
 
 // One raw completion call.
@@ -136,20 +153,17 @@ export const generateContent = async (request, { maxLoops = 3, validate } = {}) 
  * @returns {Promise<any>} the parsed JSON
  */
 export const generateJSON = async (request, opts = {}) => {
-  const text = await generateContent(
-    { ...request, jsonMode: true },
-    {
-      ...opts,
-      validate: (t) => {
-        try {
-          JSON.parse(stripFences(t));
-        } catch {
-          const e = new Error("AI returned unparseable JSON");
-          e.isValidationError = true;
-          throw e;
-        }
-      },
-    }
-  );
-  return JSON.parse(stripFences(text));
+  const text = await generateContent(request, {
+    ...opts,
+    validate: (t) => {
+      try {
+        extractJSON(t);
+      } catch {
+        const e = new Error("AI returned unparseable JSON");
+        e.isValidationError = true;
+        throw e;
+      }
+    },
+  });
+  return extractJSON(text);
 };

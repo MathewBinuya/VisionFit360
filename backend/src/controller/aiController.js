@@ -263,7 +263,9 @@ export const recommendWorkout = async (req, res) => {
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      maxTokens: 2048,
+      // headroom: gpt-oss is a reasoning model, so leave room for its reasoning
+      // pass plus the JSON without truncating the workout.
+      maxTokens: 4096,
     });
 
     // validate + clamp (weights capped to the user's age tier); fall back safely
@@ -350,7 +352,7 @@ export const chatWithCoach = async (req, res) => {
       return res.json({ reply: "Ask me anything about your training!" });
     }
 
-    const parsed = await generateJSON({ messages: chatMessages, maxTokens: 2048 });
+    const parsed = await generateJSON({ messages: chatMessages, maxTokens: 4096 });
 
     const reply = sanitizeText(parsed.reply, 2000) || "Sorry, I couldn't put that together. Try again.";
 
