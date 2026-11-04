@@ -5,14 +5,17 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // across every key, we fall over to the next model in the list. Env-overridable
 // so a model change needs no code change / redeploy.
 //
-// Default: gemini-3.5-flash-lite (primary) → gemini-3.8-flash (fallback).
-//  - 3.5-flash-lite is a fast, low-latency model and a DIFFERENT model from
-//    3.8-flash, so it doesn't share 3.8's "high demand" 503 overload. Plenty
-//    capable for the structured workout/chat output here, and much quicker.
-//  - 3.8-flash is the higher-quality fallback for when lite is unavailable.
+// Default chain, quietest/most-available first for CONSISTENCY (what matters
+// more than polish here): gemini-3.1-flash-lite → gemini-3.5-flash-lite →
+// gemini-3.8-flash.
+//  - Older lite models have the most spare capacity, so they 503 ("high demand")
+//    the least — the whole point is to avoid the overloaded newest model.
+//  - 3.8-flash stays last as the higher-quality fallback if the lites are down.
+//  - All are fine for the structured workout/chat output here and faster than
+//    3.8 (the lites aren't heavy "thinking" models).
 // NOTES: gemini-2.5-flash is retired (404 for new projects). gemini-3.7-flash is
 // NOT a useful fallback — Google auto-forwards it to 3.8-flash (same capacity).
-const MODEL_NAMES = (process.env.GEMINI_MODEL || "gemini-3.5-flash-lite,gemini-3.8-flash")
+const MODEL_NAMES = (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-3.8-flash")
   .split(",")
   .map((m) => m.trim())
   .filter(Boolean);
