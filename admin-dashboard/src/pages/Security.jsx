@@ -148,7 +148,7 @@ export default function Security() {
                     <div className="card-title" style={{ marginBottom: 4 }}>Maintenance mode</div>
                     <p className="sec-text">
                       Turn this on before you update the backend. While it's on, everyone is locked
-                      out of the app (sign-in, workouts, AI coach and all) and gets a "down for
+                      out of the app (sign-in, workouts and everything else) and gets a "down for
                       maintenance" message. The admin dashboard keeps working so you can turn it
                       back off here.
                     </p>
