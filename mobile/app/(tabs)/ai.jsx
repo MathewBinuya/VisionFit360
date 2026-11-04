@@ -8,6 +8,7 @@ import styles from '../../assets/styles/tabStyle/ai.style'
 import api from '../../lib/axios'
 import { useAuthStore } from '../../store/authStore'
 import Celebration from '../../components/Celebration'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const formatRecommendationText = (rec) => {
   const exerciseLines = rec.exercises.map((ex) => {
@@ -25,6 +26,7 @@ const formatRecommendationText = (rec) => {
 
 export default function AICoach() {
   const user = useAuthStore((s) => s.user);
+  const insets = useSafeAreaInsets();
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -240,7 +242,7 @@ export default function AICoach() {
             onPress={() => setMenuMessage(null)}
           >
             <View style={{
-              position: 'absolute', bottom: 24, left: 24, right: 24,
+              position: 'absolute', bottom: Math.max(insets.bottom, 12) + 12, left: 24, right: 24,
               backgroundColor: COLORS.white, borderRadius: 16, borderWidth: 1,
               borderColor: COLORS.border, overflow: 'hidden',
             }}>
