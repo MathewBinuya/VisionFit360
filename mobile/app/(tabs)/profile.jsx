@@ -29,19 +29,52 @@ const Card = ({ children }) => (
   </View>
 );
 
-// Compact label/value row; `last` omits the divider so it sits flush in the Card.
-const InfoRow = ({ label, value, last }) => (
+// Compact icon + label/value row; `last` omits the divider so it sits flush.
+const InfoRow = ({ icon, label, value, last }) => (
   <View style={{
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center',
     paddingVertical: 14, borderBottomWidth: last ? 0 : 1, borderBottomColor: COLORS.border,
   }}>
+    {icon ? <Ionicons name={icon} size={16} color={COLORS.placeholderText} style={{ marginRight: 10 }} /> : null}
     <Text style={{ fontSize: 13, color: COLORS.placeholderText, fontFamily: FONT }}>{label}</Text>
     <Text
-      style={{ fontSize: 15, color: COLORS.black, fontWeight: '600', flexShrink: 1, marginLeft: 16, textAlign: 'right', fontFamily: FONT }}
+      style={{ fontSize: 15, color: COLORS.black, fontWeight: '600', flex: 1, marginLeft: 16, textAlign: 'right', fontFamily: FONT }}
       numberOfLines={1}
     >
       {value || '—'}
     </Text>
+  </View>
+);
+
+// Colors for the BMI category badge (same thresholds as the dashboard).
+const BMI_COLORS = { Underweight: '#2563EB', Normal: '#16A34A', Overweight: '#D97706', Obese: '#DC2626' };
+
+// One cell of the at-a-glance stat strip. An optional colored chip sits under
+// the value (used for the BMI category). `last` drops the right divider.
+const StatTile = ({ value, label, chip, chipColor, last }) => (
+  <View style={{
+    flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 16,
+    borderRightWidth: last ? 0 : 1, borderRightColor: COLORS.border,
+  }}>
+    <Text
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.7}
+      style={{ fontSize: 18, fontWeight: '800', color: COLORS.black, fontFamily: FONT, paddingHorizontal: 4 }}
+    >
+      {value}
+    </Text>
+    <Text style={{
+      fontSize: 11, color: COLORS.placeholderText, marginTop: 3, fontFamily: FONT,
+      textTransform: 'uppercase', letterSpacing: 0.5,
+    }}>
+      {label}
+    </Text>
+    {chip ? (
+      <View style={{ marginTop: 6, backgroundColor: chipColor + '22', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: chipColor, fontFamily: FONT }}>{chip}</Text>
+      </View>
+    ) : null}
   </View>
 );
 
@@ -278,6 +311,7 @@ export default function Profile() {
   const bmiVal = hNum > 0 && wNum > 0 ? +(wNum / ((hNum / 100) ** 2)).toFixed(1) : null;
   const bmiCat = bmiVal == null ? null
     : bmiVal < 18.5 ? "Underweight" : bmiVal < 25 ? "Normal" : bmiVal < 30 ? "Overweight" : "Obese";
+  const bmiColor = bmiCat ? BMI_COLORS[bmiCat] : COLORS.placeholderText;
 
   const heightDisplay = heightUnit === "ft"
     ? (ftVal || inVal ? `${ftVal || 0} ft ${inVal || 0} in` : "—")
@@ -432,20 +466,29 @@ export default function Profile() {
       {!editing ? (
         /* ---------- compact read-only view ---------- */
         <>
+          <SectionTitle icon="barbell-outline">Body</SectionTitle>
+          <View style={{
+            flexDirection: 'row', backgroundColor: COLORS.cards, borderRadius: 16,
+            borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden',
+          }}>
+            <StatTile value={metricHeight ? heightDisplay : '—'} label="Height" />
+            <StatTile value={metricWeight ? weightDisplay : '—'} label="Weight" />
+            <StatTile
+              value={bmiVal != null ? String(bmiVal) : '—'}
+              label="BMI"
+              chip={bmiCat}
+              chipColor={bmiColor}
+              last
+            />
+          </View>
+
           <SectionTitle icon="person-circle-outline">Account</SectionTitle>
           <Card>
-            <InfoRow label="Username" value={form.username} />
-            <InfoRow label="Name" value={fullName} />
-            <InfoRow label="Birthdate" value={dob ? formatDob(dob) : null} />
-            <InfoRow label="Age" value={age != null ? `${age} years old` : null} />
-            <InfoRow label="Bio" value={form.bio} last />
-          </Card>
-
-          <SectionTitle icon="barbell-outline">Body</SectionTitle>
-          <Card>
-            <InfoRow label="Height" value={metricHeight ? heightDisplay : null} />
-            <InfoRow label="Weight" value={metricWeight ? weightDisplay : null} />
-            <InfoRow label="BMI" value={bmiVal != null ? `${bmiVal} · ${bmiCat}` : null} last />
+            <InfoRow icon="at-outline" label="Username" value={form.username} />
+            <InfoRow icon="person-outline" label="Name" value={fullName} />
+            <InfoRow icon="calendar-outline" label="Birthdate" value={dob ? formatDob(dob) : null} />
+            <InfoRow icon="time-outline" label="Age" value={age != null ? `${age} years old` : null} />
+            <InfoRow icon="reader-outline" label="Bio" value={form.bio} last />
           </Card>
         </>
       ) : (
