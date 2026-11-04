@@ -4,6 +4,7 @@
   --gray: #AAAAAA;
   --input-bg: #F7F7F7;
   --border: #EBEBEB;
+  --outline: #D4D4DA;        /* stronger outline for containers (cards/panels), vs the hairline --border used for dividers */
   --button: #111111;
   --placeholder: #BBBBC0;
   --black: #000000;
@@ -28,7 +29,7 @@ body { background: var(--background); color: var(--black); }
 }
 .login-card {
   background: var(--cards); padding: 40px; border-radius: 16px; width: 360px;
-  border: 1px solid var(--border); box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  border: 1px solid var(--outline); box-shadow: 0 4px 24px rgba(0,0,0,0.06);
   display: flex; flex-direction: column;
 }
 .login-card h1 { font-size: 26px; text-align: center; color: var(--black); font-weight: 700; }
@@ -133,7 +134,7 @@ body { background: var(--background); color: var(--black); }
   animation: fadeIn 0.12s ease-out;
 }
 .dialog {
-  background: var(--cards); border: 1px solid var(--border); border-radius: 14px;
+  background: var(--cards); border: 1px solid var(--outline); border-radius: 14px;
   width: 100%; max-width: 360px; padding: 22px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
   animation: popIn 0.14s ease-out;
 }
@@ -156,7 +157,7 @@ body { background: var(--background); color: var(--black); }
   gap: 12px; margin-bottom: 16px;
 }
 .stat-card {
-  background: var(--cards); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px;
+  background: var(--cards); border: 1px solid var(--outline); border-radius: 12px; padding: 16px 18px;
 }
 .stat-card .label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
 .stat-card .value { font-size: 26px; font-weight: 650; color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -165,7 +166,7 @@ body { background: var(--background); color: var(--black); }
 /* KPI strip — one bordered row, hairline dividers */
 .kpi-strip {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px;
+  gap: 1px; background: var(--border); border: 1px solid var(--outline); border-radius: 12px;
   margin-bottom: 16px; overflow: hidden;
 }
 .kpi { padding: 16px 20px; background: var(--cards); }
@@ -188,7 +189,7 @@ body { background: var(--background); color: var(--black); }
 
 /* tables */
 .card {
-  background: var(--cards); border: 1px solid var(--border); border-radius: 12px;
+  background: var(--cards); border: 1px solid var(--outline); border-radius: 12px;
   padding: 20px; margin-bottom: 16px;
 }
 .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }

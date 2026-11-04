@@ -17,6 +17,11 @@ export default function Security() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // Maintenance mode — blocks the user-facing app while the backend is updated.
+  const [maint, setMaint] = useState(null); // { maintenance, message, startedAt }
+  const [maintBusy, setMaintBusy] = useState(false);
+  const [maintError, setMaintError] = useState("");
+
   const load = useCallback(
     () =>
       api
@@ -26,7 +31,32 @@ export default function Security() {
     []
   );
 
-  useEffect(() => { load(); }, [load]);
+  const loadMaint = useCallback(
+    () =>
+      api
+        .get("/maintenance")
+        .then((res) => setMaint(res.data))
+        .catch(() => setMaint(null)),
+    []
+  );
+
+  useEffect(() => { load(); loadMaint(); }, [load, loadMaint]);
+
+  const toggleMaintenance = async (enabled) => {
+    if (enabled && !window.confirm(
+      "Turn on maintenance mode?\n\nEveryone using the app will be locked out until you turn it off here. Use this while the backend is updating."
+    )) return;
+    setMaintBusy(true);
+    setMaintError("");
+    try {
+      const res = await api.put("/maintenance", { enabled });
+      setMaint(res.data);
+    } catch (err) {
+      setMaintError(err.response?.data?.message || "Couldn't update maintenance mode");
+    } finally {
+      setMaintBusy(false);
+    }
+  };
 
   const run = async (fn) => {
     setBusy(true);
@@ -112,6 +142,43 @@ export default function Security() {
         <StateBlock loading={!status && !loadError} error={loadError}>
           {status && (
             <>
+              <div className="card sec-card">
+                <div className="sec-head">
+                  <div>
+                    <div className="card-title" style={{ marginBottom: 4 }}>Maintenance mode</div>
+                    <p className="sec-text">
+                      Turn this on before you update the backend. While it's on, everyone is locked
+                      out of the app (sign-in, workouts, AI coach and all) and gets a "down for
+                      maintenance" message. The admin dashboard keeps working so you can turn it
+                      back off here.
+                    </p>
+                  </div>
+                  <span className={`badge ${maint?.maintenance ? "badge-presence-recent" : "badge-presence-inactive"}`}>
+                    {maint?.maintenance ? "On" : "Off"}
+                  </span>
+                </div>
+
+                {maintError && <div className="error" style={{ marginTop: 12 }}>{maintError}</div>}
+
+                {maint?.maintenance && maint?.startedAt && (
+                  <p className="sec-text" style={{ marginTop: 12 }}>
+                    On since <b>{new Date(maint.startedAt).toLocaleString()}</b>.
+                  </p>
+                )}
+
+                <div className="sec-actions" style={{ marginTop: 14 }}>
+                  {maint?.maintenance ? (
+                    <button className="btn-small" onClick={() => toggleMaintenance(false)} disabled={maintBusy}>
+                      {maintBusy ? "Working..." : "Turn off — resume app"}
+                    </button>
+                  ) : (
+                    <button className="btn-danger" onClick={() => toggleMaintenance(true)} disabled={maintBusy}>
+                      {maintBusy ? "Working..." : "Turn on maintenance"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {backupCodes && (
                 <div className="card sec-card">
                   <div className="card-title">Save your backup codes</div>
