@@ -350,12 +350,46 @@ const chatResponseSchema = {
   required: ["responseType", "reply"],
 };
 
+// Gemini requires `contents` to alternate user/model turns, and after our two
+// priming turns (user + model) the client history must resume with a user turn.
+// The client history breaks this in two ways: its FIRST turn is the auto
+// recommendation (a `model` turn), and deleting messages in the UI can leave two
+// same-role turns adjacent. Both produce a user→model→model→… sequence that
+// Gemini rejects with a 400 (surfacing as "couldn't respond"). Normalise by
+// collapsing consecutive same-role turns, then lifting any leading model turn
+// out so the remaining turns begin with a user turn and strictly alternate; the
+// lifted text is folded back into the priming model turn to keep the context.
+const normalizeChatTurns = (messages) => {
+  const mapped = (Array.isArray(messages) ? messages : [])
+    .map((m) => ({
+      role: m?.role === "user" ? "user" : "model",
+      text: typeof m?.text === "string" ? m.text.trim() : "",
+    }))
+    .filter((m) => m.text);
+
+  const collapsed = [];
+  for (const m of mapped) {
+    const last = collapsed[collapsed.length - 1];
+    if (last && last.role === m.role) last.text += `\n\n${m.text}`;
+    else collapsed.push({ ...m });
+  }
+
+  let primerExtra = "";
+  while (collapsed.length && collapsed[0].role === "model") {
+    primerExtra += (primerExtra ? "\n\n" : "") + collapsed.shift().text;
+  }
+
+  return { turns: collapsed, primerExtra };
+};
+
 export const chatWithCoach = async (req, res) => {
   try {
     const { messages } = req.body;
     const { text: context, weightCap } = await buildUserContext(req.user.id);
 
-    const trimmed = Array.isArray(messages) ? messages.slice(-10) : [];
+    const { turns, primerExtra } = normalizeChatTurns(
+      Array.isArray(messages) ? messages.slice(-10) : []
+    );
 
     const history = [
       {

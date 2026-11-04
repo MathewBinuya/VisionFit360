@@ -1,6 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL_NAME = "gemini-2.5-flash";
+// gemini-2.5-flash was retired for new API projects (404 "no longer available
+// to new users"), so default to the current flash model. Overridable via env so
+// a future model bump needs no code change / redeploy.
+const MODEL_NAME = (process.env.GEMINI_MODEL || "gemini-3.8-flash").trim();
 
 // Collect every configured key: GEMINI_API_KEY (single, legacy) plus
 // GEMINI_API_KEYS (comma-separated). The order here is the failover order.
