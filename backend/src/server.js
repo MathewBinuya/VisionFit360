@@ -24,7 +24,27 @@ const PORT = process.env.PORT || 3000;
 // off each user, not the shared proxy IP.
 app.set("trust proxy", 1);
 
-app.use(cors());              // ← MOVED UP: must come before routes
+// Credentialed CORS so the admin dashboard (a different origin) can send its
+// httpOnly auth cookie. A wildcard origin is NOT allowed with credentials, so we
+// echo back only known origins. Requests with no Origin header (the mobile app,
+// curl, server-to-server) are always allowed. Set ADMIN_ORIGINS (comma-separated,
+// e.g. "https://your-dashboard.vercel.app") in the backend env to lock browser
+// access down to the dashboard; until it's set we stay permissive so nothing breaks.
+const allowedOrigins = (process.env.ADMIN_ORIGINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin) return cb(null, true);
+      if (!allowedOrigins.length) return cb(null, true);
+      return cb(null, allowedOrigins.includes(origin));
+    },
+    credentials: true,
+  })
+);                            // must come before routes
 app.use(express.json());      // keep this once, before routes
 
 // Public pages required to publish the Google OAuth consent screen (home /

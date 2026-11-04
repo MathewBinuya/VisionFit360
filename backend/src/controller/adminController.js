@@ -19,9 +19,12 @@ import {
   ACCOUNT_ACTIVE_DAYS,
   presenceStatus,
 } from "../lib/presence.js";
+import { setAuthCookie, clearAuthCookie, newCsrfToken } from "../lib/adminCookies.js";
 
-const generateAdminToken = (id) =>
-  jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, { expiresIn: "7d" });
+// The CSRF value is embedded in the token so it can be checked statelessly: the
+// dashboard sends it back as a header and the middleware matches it to this claim.
+const generateAdminToken = (id, csrf) =>
+  jwt.sign({ id, role: "admin", csrf }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
 // Explicit allow-list of user fields safe to expose to admins.
 // (Never leak password, currentToken, reset/verification codes, etc.)
@@ -307,14 +310,24 @@ export const verifyAdminOtp = async (req, res) => {
     admin.otpAttempts = 0;
     await admin.save();
 
+    // The JWT goes into an httpOnly cookie (never to JS); only the CSRF token is
+    // returned for the dashboard to echo back on mutating requests.
+    const csrf = newCsrfToken();
+    setAuthCookie(res, generateAdminToken(admin._id, csrf));
     res.json({
-      token: generateAdminToken(admin._id),
+      csrf,
       admin: { id: admin._id, username: admin.username, email: admin.email, name: admin.name },
       backupCodesLeft: admin.totpEnabled ? admin.backupCodes.length : null,
     });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
+};
+
+// Clears the auth cookie server-side (the dashboard also drops its local hints).
+export const adminLogout = async (req, res) => {
+  clearAuthCookie(res);
+  res.json({ message: "Logged out" });
 };
 
 // Sends the email code — when the admin chooses email (`first: true`) or taps

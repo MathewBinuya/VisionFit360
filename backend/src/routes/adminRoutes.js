@@ -1,7 +1,7 @@
 import express from "express";
 import adminProtect from "../middleware/admin.middleware.js";
 import {
-  adminLogin, verifyAdminOtp, resendAdminOtp,
+  adminLogin, verifyAdminOtp, resendAdminOtp, adminLogout,
   getTwoFactorStatus, startTwoFactorSetup, confirmTwoFactorSetup, regenerateBackupCodes, disableTwoFactor,
   getStats, getDashboard, getPresence,
   getExerciseUsage, getUsersByExercise,
@@ -18,6 +18,9 @@ const router = express.Router();
 router.post("/login", adminLogin);              // step 1: password -> emails a code
 router.post("/login/verify", verifyAdminOtp);   // step 2: code -> admin token
 router.post("/login/resend", resendAdminOtp);   // resend code (60s cooldown)
+
+// logout: protected so CSRF applies, then clears the auth cookie
+router.post("/logout", adminProtect, adminLogout);
 
 // protected (admin only)
 router.get("/security/2fa", adminProtect, getTwoFactorStatus);
