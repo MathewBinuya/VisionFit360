@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { API_URL } from './api'
 import { useAuthStore } from "../store/authStore";
+import { useMaintenanceStore } from "../store/maintenanceStore";
 
 const api = axios.create({ baseURL: API_URL });
 
@@ -23,6 +24,11 @@ let isLoggingOut = false;
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Backend in maintenance mode — flip the app over to the maintenance screen.
+    if (error.response?.status === 503 && error.response.data?.maintenance) {
+      useMaintenanceStore.getState().trigger(error.response.data.message);
+    }
+
     if (error.response?.status === 401 && !isLoggingOut) {
       isLoggingOut = true;
       try {
