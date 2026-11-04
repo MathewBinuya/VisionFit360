@@ -3,6 +3,7 @@ import adminProtect from "../middleware/admin.middleware.js";
 import {
   adminLogin, verifyAdminOtp, resendAdminOtp, adminLogout,
   getTwoFactorStatus, startTwoFactorSetup, confirmTwoFactorSetup, regenerateBackupCodes, disableTwoFactor,
+  getMaintenance, updateMaintenance,
   getStats, getDashboard, getPresence,
   getExerciseUsage, getUsersByExercise,
   getUsers, getUserById, deleteUser, updateUserStatus,
@@ -28,6 +29,10 @@ router.post("/security/2fa/setup", adminProtect, startTwoFactorSetup);         /
 router.post("/security/2fa/enable", adminProtect, confirmTwoFactorSetup);      // first code -> on + backup codes
 router.post("/security/2fa/backup-codes", adminProtect, regenerateBackupCodes);
 router.post("/security/2fa/disable", adminProtect, disableTwoFactor);
+
+// maintenance mode (blocks the user-facing API while the backend is updated)
+router.get("/maintenance", adminProtect, getMaintenance);
+router.put("/maintenance", adminProtect, updateMaintenance);
 
 router.get("/stats", adminProtect, getStats);         // legacy counts (kept for back-compat)
 router.get("/dashboard", adminProtect, getDashboard); // full aggregated dashboard

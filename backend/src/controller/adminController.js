@@ -20,6 +20,7 @@ import {
   presenceStatus,
 } from "../lib/presence.js";
 import { setAuthCookie, clearAuthCookie, newCsrfToken } from "../lib/adminCookies.js";
+import { getSetting, setMaintenance } from "../lib/maintenance.js";
 
 // The CSRF value is embedded in the token so it can be checked statelessly: the
 // dashboard sends it back as a header and the middleware matches it to this claim.
@@ -448,6 +449,42 @@ export const disableTwoFactor = async (req, res) => {
     admin.backupCodes = [];
     await admin.save();
     res.json({ enabled: false });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//  MAINTENANCE MODE
+// Current switch state, for the admin Security page.
+export const getMaintenance = async (req, res) => {
+  try {
+    const s = await getSetting();
+    res.json({
+      maintenance: !!s?.maintenanceMode,
+      message: s?.maintenanceMessage || "",
+      startedAt: s?.maintenanceStartedAt || null,
+      updatedBy: s?.maintenanceUpdatedBy || null,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Flip the switch. On = the user-facing API is sealed off (503) for everyone
+// until this is turned back off from here.
+export const updateMaintenance = async (req, res) => {
+  try {
+    const s = await setMaintenance({
+      enabled: !!req.body.enabled,
+      message: req.body.message,
+      updatedBy: req.admin?.email || ADMIN_EMAIL,
+    });
+    res.json({
+      maintenance: !!s.maintenanceMode,
+      message: s.maintenanceMessage || "",
+      startedAt: s.maintenanceStartedAt || null,
+      updatedBy: s.maintenanceUpdatedBy || null,
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }

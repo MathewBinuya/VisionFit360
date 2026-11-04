@@ -12,6 +12,8 @@ import feedbackRoutes from "./routes/feedbackRoutes.js";
 import cors from "cors";
 
 import { connectDB } from "./lib/db.js";
+import { getSetting } from "./lib/maintenance.js";
+import maintenanceGate from "./middleware/maintenance.middleware.js";
 import { homePage, privacyPage, termsPage } from "./lib/legalPages.js";
 
 const app = express();
@@ -53,13 +55,27 @@ app.get("/", (req, res) => res.type("html").send(homePage()));
 app.get("/privacy", (req, res) => res.type("html").send(privacyPage()));
 app.get("/terms", (req, res) => res.type("html").send(termsPage()));
 
-app.use("/api/ai", aiRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/profile", profileRoutes);
-app.use("/api/bmi", bmiRoutes);
-app.use("/api/workouts", workoutRoutes);
+// Public, never gated: lets any client (mobile app) check whether the backend is
+// in maintenance mode so it can show a proper screen instead of raw errors.
+app.get("/api/maintenance", async (req, res) => {
+  try {
+    const s = await getSetting();
+    res.json({ maintenance: !!s?.maintenanceMode, message: s?.maintenanceMessage || "" });
+  } catch {
+    res.json({ maintenance: false, message: "" });
+  }
+});
+
+// The admin API stays open during maintenance so the switch can be turned back
+// off; every other route group is sealed behind the gate.
 app.use("/api/admin", adminRoutes);
-app.use("/api/feedback", feedbackRoutes);
+
+app.use("/api/ai", maintenanceGate, aiRoutes);
+app.use("/api/auth", maintenanceGate, authRoutes);
+app.use("/api/profile", maintenanceGate, profileRoutes);
+app.use("/api/bmi", maintenanceGate, bmiRoutes);
+app.use("/api/workouts", maintenanceGate, workoutRoutes);
+app.use("/api/feedback", maintenanceGate, feedbackRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
