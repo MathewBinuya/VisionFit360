@@ -10,8 +10,11 @@ import Security from "./pages/Security";
 import "./App.css";
 
 function Protected({ children }) {
-  const token = localStorage.getItem("adminToken");
-  return token ? children : <Navigate to="/login" />;
+  // The real gate is the server's httpOnly cookie; this is just a UI hint so we
+  // don't flash the app before login. A stale hint is harmless — the first API
+  // call returns 401 and the axios interceptor redirects to /login.
+  const authed = !!localStorage.getItem("adminCsrf");
+  return authed ? children : <Navigate to="/login" />;
 }
 
 export default function App() {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useNavigate } from "react-router-dom";
+import api from "../lib/api";
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -14,8 +15,11 @@ export default function Sidebar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [confirming]);
 
-  const logout = () => {
-    localStorage.removeItem("adminToken");
+  const logout = async () => {
+    // Ask the server to clear the httpOnly cookie; ignore failures so logout
+    // always proceeds locally.
+    try { await api.post("/logout"); } catch { /* clear locally regardless */ }
+    localStorage.removeItem("adminCsrf");
     localStorage.removeItem("adminName");
     navigate("/login");
   };

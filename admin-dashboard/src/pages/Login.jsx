@@ -111,7 +111,9 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await api.post("/login/verify", { challenge, code, method });
-      localStorage.setItem("adminToken", res.data.token);
+      // The auth token is now an httpOnly cookie set by the server — never stored
+      // in JS. We keep only the CSRF value (to echo back) and the name (display).
+      localStorage.setItem("adminCsrf", res.data.csrf);
       localStorage.setItem("adminName", res.data.admin.name);
       navigate("/dashboard");
     } catch (err) {
