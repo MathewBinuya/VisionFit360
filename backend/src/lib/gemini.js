@@ -1,15 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Model(s) to use, in preference order. gemini-2.5-flash was retired for new API
-// projects (404 "no longer available to new users"), so default to the current
-// flash model. GEMINI_MODEL may be a comma-separated list — if the first model
-// is unavailable (404) or stays overloaded (503) across every key, we fall over
-// to the next model in the list. All of this is env-overridable so a future
-// model change needs no code change / redeploy.
-// NOTE: gemini-3.7-flash is NOT a useful fallback — Google auto-forwards it to
-// gemini-3.8-flash, so it shares the same capacity. Use a genuinely different
-// model (e.g. a lite/pro variant your account can access) if you add one.
-const MODEL_NAMES = (process.env.GEMINI_MODEL || "gemini-3.8-flash")
+// Model(s) to use, in preference order. GEMINI_MODEL may be a comma-separated
+// list — if the first model is unavailable (404) or stays overloaded (503)
+// across every key, we fall over to the next model in the list. Env-overridable
+// so a model change needs no code change / redeploy.
+//
+// Default: gemini-3.5-flash-lite (primary) → gemini-3.8-flash (fallback).
+//  - 3.5-flash-lite is a fast, low-latency model and a DIFFERENT model from
+//    3.8-flash, so it doesn't share 3.8's "high demand" 503 overload. Plenty
+//    capable for the structured workout/chat output here, and much quicker.
+//  - 3.8-flash is the higher-quality fallback for when lite is unavailable.
+// NOTES: gemini-2.5-flash is retired (404 for new projects). gemini-3.7-flash is
+// NOT a useful fallback — Google auto-forwards it to 3.8-flash (same capacity).
+const MODEL_NAMES = (process.env.GEMINI_MODEL || "gemini-3.5-flash-lite,gemini-3.8-flash")
   .split(",")
   .map((m) => m.trim())
   .filter(Boolean);
