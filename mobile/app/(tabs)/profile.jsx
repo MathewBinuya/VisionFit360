@@ -374,10 +374,9 @@ export default function Profile() {
     const locked = nameLocked[key];
     if (locked) {
       return (
-        <View style={{ opacity: 0.55 }}>
-          <View style={styles.readOnlyBox}>
-            <Text style={styles.readValue}>{form[key] || "—"}</Text>
-          </View>
+        <View style={[styles.readOnlyBox, styles.readOnlyBoxMuted]}>
+          <Text style={styles.readValueMuted} numberOfLines={1}>{form[key] || "—"}</Text>
+          <Ionicons name="lock-closed" size={14} color={COLORS.placeholderText} />
         </View>
       );
     }
@@ -524,9 +523,10 @@ export default function Profile() {
           <Text style={styles.label}>Middle name (optional)</Text>
           {NameInput("middleName", "Middle name")}
           {nameSettable && (
-            <Text style={{ fontSize: 12, color: COLORS.placeholderText, marginTop: 6 }}>
-              Your name can be set once. After you save, it can&apos;t be changed.
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 }}>
+              <Ionicons name="lock-closed" size={12} color={COLORS.placeholderText} />
+              <Text style={styles.lockedHint}>Your name can be set once. After you save, it can&apos;t be changed.</Text>
+            </View>
           )}
 
           <Text style={styles.label}>Bio</Text>
@@ -541,6 +541,9 @@ export default function Profile() {
               multiline
             />
           </View>
+          <Text style={{ fontSize: 11, color: COLORS.placeholderText, textAlign: 'right', marginTop: 4, fontFamily: FONT }}>
+            {form.bio.length}/160
+          </Text>
 
           {/* Birthdate + Age (read-only; the picker appears below if still unset) */}
           <View style={{ flexDirection: "row", gap: 10, opacity: 0.55 }}>
@@ -548,6 +551,7 @@ export default function Profile() {
               <Text style={styles.label}>Birthdate</Text>
               <View style={styles.readOnlyBox}>
                 <Text style={styles.readValue}>{dob ? formatDob(dob) : "—"}</Text>
+                {dobLocked ? <Ionicons name="lock-closed" size={14} color={COLORS.placeholderText} /> : null}
               </View>
             </View>
             <View style={{ flex: 1 }}>
@@ -566,7 +570,7 @@ export default function Profile() {
                 maximumDate={maxBirthDate()}
                 minimumDate={minBirthDate()}
               />
-              <Text style={{ fontSize: 12, color: COLORS.placeholderText, marginTop: 6 }}>
+              <Text style={styles.lockedHint}>
                 You can set this once. After you save, it can&apos;t be changed.
               </Text>
             </View>
@@ -638,6 +642,24 @@ export default function Profile() {
             />
             <Text style={styles.unitSuffix}>{weightUnit}</Text>
           </View>
+
+          {/* Live BMI preview — updates as height/weight are typed */}
+          {bmiVal != null && (
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              marginTop: 16, paddingHorizontal: 14, paddingVertical: 12,
+              backgroundColor: COLORS.inputBackground, borderRadius: 12,
+              borderWidth: 1, borderColor: COLORS.border,
+            }}>
+              <Text style={{ fontSize: 13, color: COLORS.placeholderText, fontFamily: FONT }}>Your BMI</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.black, fontFamily: FONT }}>{bmiVal}</Text>
+                <View style={{ backgroundColor: bmiColor + '22', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: bmiColor, fontFamily: FONT }}>{bmiCat}</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </>
       )}
 
