@@ -124,6 +124,10 @@ export const generateContent = async (request, { maxLoops = 3 } = {}) => {
           retryableSeen = true;
         }
       }
+      // This model failed on every key this sweep — log WHY so a prod failover
+      // is explainable (model-gone/404 vs busy 429/503) instead of silent.
+      const why = (lastErr?.message || "").replace(/\s+/g, " ").slice(0, 160);
+      console.log(`Gemini: ${MODEL_NAMES[mi]} failed this sweep (${modelGone ? "unavailable/404" : "busy 429/503"}) — ${why}`);
       if (modelGone) continue; // try the next fallback model
     }
 
