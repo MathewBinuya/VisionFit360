@@ -93,6 +93,11 @@ const exerciseGroup = (name) => {
   return entry ? entry.key : String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 };
 
+// Junk exercise names (test/garbage input) that should never surface on the
+// dashboard. Matched against the grouped key (lowercased, alphanumerics only).
+const HIDDEN_EXERCISE_GROUPS = [/^sbsh+s*$/];
+const isHiddenExercise = (key) => HIDDEN_EXERCISE_GROUPS.some((re) => re.test(key));
+
 // Distinct users + completed sessions per exercise. Shared by the dashboard
 // summary and the "Users per Exercise" page.
 // Records left behind by deleted accounts are ignored everywhere on the dashboard.
@@ -115,7 +120,7 @@ const loadExerciseUsage = async (limit = 50, userIds) => {
   const merged = new Map();
   for (const r of rows) {
     const key = exerciseGroup(r._id);
-    if (!key) continue;
+    if (!key || isHiddenExercise(key)) continue;
     const isCatalog = EXERCISE_CATALOG.some((e) => e.key === key);
     const g = merged.get(key) || { exercise: isCatalog ? key : r._id, users: new Set(), sessions: 0, top: 0 };
     r.users.forEach((u) => g.users.add(String(u)));
