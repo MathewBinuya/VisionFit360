@@ -28,3 +28,29 @@ export const emailLimiter = make(6, "Too many requests. Please wait a few minute
 // Code-entry endpoints (verify email / reset password). The controllers already
 // lock a code after 5 wrong guesses; this bounds hammering across codes too.
 export const codeLimiter = make(20, "Too many attempts. Please wait a few minutes and try again.");
+
+// App-wide floor against single-source flooding, applied to every route. It is
+// deliberately GENEROUS — normal use, including a busy demo with several devices
+// behind one shared/campus wifi IP, stays far below it; it only trips a runaway
+// client hammering the API. Per IP, per minute. Tune with GLOBAL_RATE_LIMIT.
+export const globalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: Number(process.env.GLOBAL_RATE_LIMIT) || 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Please slow down and try again shortly." },
+});
+
+// AI endpoints call a paid LLM, so abuse costs real money, not just load. They get
+// a tighter cap keyed by the authenticated USER id (not IP) — so people sharing one
+// network don't throttle each other, and one account can't spam expensive calls.
+// Mounted AFTER the auth middleware (which sets req.user.id). Per user, per 5 min.
+// Tune with AI_RATE_LIMIT.
+export const aiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  limit: Number(process.env.AI_RATE_LIMIT) || 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => String(req.user?.id || "anonymous"),
+  message: { message: "You're sending AI requests too quickly. Please wait a moment and try again." },
+});

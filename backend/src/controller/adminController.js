@@ -549,6 +549,11 @@ export const getUsers = async (req, res) => {
     const activeThreshold = new Date(Date.now() - ACCOUNT_ACTIVE_MS);
 
     const pipeline = [];
+    // Hide never-verified signups (abandoned/junk accounts) from the admin list.
+    // `$ne: false` keeps verified users AND any legacy rows missing the field, so
+    // only explicitly-unverified accounts are hidden. These are also auto-pruned
+    // after a grace window by the cleanup job.
+    pipeline.push({ $match: { isVerified: { $ne: false } } });
     if (search) {
       const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
       pipeline.push({ $match: { $or: [{ name: re }, { username: re }, { email: re }] } });

@@ -14,6 +14,8 @@ import cors from "cors";
 import { connectDB } from "./lib/db.js";
 import { getSetting } from "./lib/maintenance.js";
 import maintenanceGate from "./middleware/maintenance.middleware.js";
+import { globalLimiter } from "./middleware/rateLimit.middleware.js";
+import { startUnverifiedCleanup } from "./lib/cleanupUnverified.js";
 import { homePage, privacyPage, termsPage } from "./lib/legalPages.js";
 
 const app = express();
@@ -49,6 +51,10 @@ app.use(
 );                            // must come before routes
 app.use(express.json());      // keep this once, before routes
 
+// Generous per-IP floor on every route — a DDoS/abuse backstop that normal use
+// (including a demo) stays well under. Sits after the body parser, before routes.
+app.use(globalLimiter);
+
 // Public pages required to publish the Google OAuth consent screen (home /
 // privacy / terms under an authorized domain).
 app.get("/", (req, res) => res.type("html").send(homePage()));
@@ -77,7 +83,9 @@ app.use("/api/bmi", maintenanceGate, bmiRoutes);
 app.use("/api/workouts", maintenanceGate, workoutRoutes);
 app.use("/api/feedback", maintenanceGate, feedbackRoutes);
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
-  connectDB();
+  await connectDB();
+  // Start the unverified-account cleanup only once the DB is connected.
+  startUnverifiedCleanup();
 });
