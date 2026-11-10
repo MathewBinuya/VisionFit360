@@ -27,6 +27,13 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Already signed in (returning to /login via the URL bar, a bookmark, or the
+  // back button)? Skip the form and go straight into the app. If the hint is
+  // stale, the first API call 401s and the interceptor sends us back here.
+  useEffect(() => {
+    if (localStorage.getItem("adminCsrf")) navigate("/dashboard", { replace: true });
+  }, [navigate]);
+
   useEffect(() => {
     if (resendIn <= 0) return;
     const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
@@ -115,7 +122,7 @@ export default function Login() {
       // in JS. We keep only the CSRF value (to echo back) and the name (display).
       localStorage.setItem("adminCsrf", res.data.csrf);
       localStorage.setItem("adminName", res.data.admin.name);
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       failed(err, "Verification failed");
     } finally {
