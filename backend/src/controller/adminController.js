@@ -95,7 +95,9 @@ const exerciseGroup = (name) => {
 
 // Junk exercise names (test/garbage input) that should never surface on the
 // dashboard. Matched against the grouped key (lowercased, alphanumerics only).
-const HIDDEN_EXERCISE_GROUPS = [/^sbsh+s*$/];
+//  - keyboard mashes of s/b/h: "sbsh", "shsh", "shshsh", "sbshh", …
+//  - purely numeric names: "1000000", "123", … (never a real exercise)
+const HIDDEN_EXERCISE_GROUPS = [/^[sbh]{3,}$/, /^\d+$/];
 const isHiddenExercise = (key) => HIDDEN_EXERCISE_GROUPS.some((re) => re.test(key));
 
 // Distinct users + completed sessions per exercise. Shared by the dashboard
@@ -523,11 +525,16 @@ export const getStats = async (req, res) => {
 // Search (name/username/email), sort and the Active/Inactive filter are all
 // resolved in a single aggregation; "last seen" is max(lastActiveAt, lastLoginAt)
 // — the same rule the UI uses — computed in-pipeline so it can also be sorted on.
+// A–Z/Z–A sort on "sortName": the lower-cased effective display name (the user's
+// name, falling back to username when name is blank) — the exact string the table
+// shows. Sorting the raw `name` field instead ordered by a value the UI doesn't
+// display (blank names floated to the top) and was case-sensitive (ASCII order put
+// "Zoe" before "alice"); `sortName` makes the order match what's on screen.
 const USER_SORTS = {
   newest: { createdAt: -1 },
   oldest: { createdAt: 1 },
-  name_az: { name: 1, username: 1 },
-  name_za: { name: -1, username: -1 },
+  name_az: { sortName: 1 },
+  name_za: { sortName: -1 },
   recent_active: { seen: -1 },
   least_active: { seen: 1 },
 };
@@ -546,8 +553,26 @@ export const getUsers = async (req, res) => {
       const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
       pipeline.push({ $match: { $or: [{ name: re }, { username: re }, { email: re }] } });
     }
-    // effective "last seen" instant (null when never seen)
-    pipeline.push({ $addFields: { seen: { $max: ["$lastActiveAt", "$lastLoginAt"] } } });
+    // effective "last seen" instant (null when never seen), plus the lower-cased
+    // display name the A–Z sort orders on (name, else username — mirrors the UI).
+    pipeline.push({
+      $addFields: {
+        seen: { $max: ["$lastActiveAt", "$lastLoginAt"] },
+        sortName: {
+          $toLower: {
+            $trim: {
+              input: {
+                $cond: [
+                  { $gt: [{ $strLenCP: { $ifNull: ["$name", ""] } }, 0] },
+                  "$name",
+                  { $ifNull: ["$username", ""] },
+                ],
+              },
+            },
+          },
+        },
+      },
+    });
     if (status === "active") {
       pipeline.push({ $match: { seen: { $gte: activeThreshold } } });
     } else if (status === "inactive") {
