@@ -106,7 +106,9 @@ export default function UserDetail() {
 
                 <div className="card">
                   <h3 className="card-title">Body &amp; demographics</h3>
-                  <Row label="Gender" value={u.gender ? u.gender.charAt(0).toUpperCase() + u.gender.slice(1) : null} />
+                  {/* only male/female are shown — any legacy "other" value falls back
+                      to the Row's empty state, matching the demographics chart */}
+                  <Row label="Gender" value={["male", "female"].includes(u.gender) ? u.gender.charAt(0).toUpperCase() + u.gender.slice(1) : null} />
                   <Row label="Birth date" value={u.dateOfBirth ? birthDate(u.dateOfBirth) : null} />
                   <Row label="Age" value={ageFromDob(u.dateOfBirth)} />
                   <Row label="Height" value={u.heightCm ? `${u.heightCm} cm` : null} />

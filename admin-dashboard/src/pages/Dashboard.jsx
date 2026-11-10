@@ -19,11 +19,15 @@ const AGE_ORDER = ["Under 13", "13–17", "18–24", "25–34", "35–44", "45�
 
 // turn a [{_id,count}] breakdown into ordered BarChart rows.
 // Users with no data on file ("Not specified") are dropped from the view.
-const toBars = (arr, order, labelFn = (x) => x) => {
+// `extras` controls whether values outside `order` are appended as their own bars;
+// pass false to show ONLY the listed buckets (e.g. Gender = male/female only).
+const toBars = (arr, order, labelFn = (x) => x, extras = true) => {
   const map = new Map((arr || []).map((d) => [d._id, d.count]));
   const rows = order.filter((k) => map.has(k)).map((k) => ({ label: labelFn(k), value: map.get(k) }));
-  for (const d of arr || []) {
-    if (!order.includes(d._id) && d._id !== NOT_SPECIFIED) rows.push({ label: labelFn(d._id), value: d.count });
+  if (extras) {
+    for (const d of arr || []) {
+      if (!order.includes(d._id) && d._id !== NOT_SPECIFIED) rows.push({ label: labelFn(d._id), value: d.count });
+    }
   }
   return rows;
 };
@@ -222,7 +226,8 @@ export default function Dashboard() {
             </div>
             <div className="grid-3">
               <Panel title="Gender">
-                <Breakdown rows={toBars(demo.gender, GENDER_ORDER, cap)} />
+                {/* male/female only — any other value is not shown as its own bar */}
+                <Breakdown rows={toBars(demo.gender, GENDER_ORDER, cap, false)} />
               </Panel>
               <Panel title="Age">
                 <Breakdown rows={toAgeBars(demo.age)} />
