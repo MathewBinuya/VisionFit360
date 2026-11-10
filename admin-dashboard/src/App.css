@@ -431,6 +431,33 @@ table.rows tfoot .row-total td { padding-top: 12px; }
 .seg-tabs button.active { background: var(--cards); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .analytics-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 
+/* ---------- 404 NOT FOUND ---------- */
+.notfound {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  justify-content: center; min-height: 60vh; padding: 24px 16px; max-width: 460px;
+  margin-left: auto; margin-right: auto;
+}
+.notfound-code {
+  font-size: 108px; font-weight: 800; line-height: 1; letter-spacing: -4px;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.notfound-title { font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 12px; letter-spacing: -0.3px; }
+.notfound-text { font-size: 14px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
+.notfound-path {
+  font-family: var(--mono, monospace); font-size: 13px; background: var(--input-bg);
+  border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; color: var(--ink);
+  word-break: break-all;
+}
+.notfound-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 24px; }
+/* the primary/ghost buttons are <Link>s here, so keep them looking like buttons */
+.notfound-actions .btn-small, .notfound-actions .btn-ghost {
+  text-decoration: none; display: inline-flex; align-items: center; line-height: 1;
+}
+/* signed-out variant sits in the login card — give it a little breathing room */
+.notfound-card { width: 420px; padding: 32px; }
+.notfound-card .notfound { min-height: auto; padding: 8px 0; }
+.notfound-card .notfound-code { font-size: 88px; }
+
 /* responsive */
 @media (max-width: 900px) {
   .two-col, .grid-2 { grid-template-columns: 1fr; }
