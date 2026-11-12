@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — VisionFIT360</title>
+<meta name="description" content="How VisionFIT360 collects, uses, and protects your information — including camera, pose tracking, AI processing, and Google Sign-In.">
+<meta name="robots" content="index, follow">
+<link rel="icon" type="image/png" href="visionfit-landingpage-icon.png">
+<link rel="apple-touch-icon" href="visionfit-landingpage-icon.png">
+<style>
+  :root {
+    --white: #FFFFFF; --ink: #111111; --border: #EBEBEB; --gray: #AAAAAA;
+    --soft: #F7F7F7; --blue: #2F7DE1; --blue-soft: #EAF2FD; --green: #1D9E75;
+    --red: #E24B4A; --text-soft: #5B616B;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--white); color: var(--ink); font-family: "Segoe UI", system-ui, -apple-system, sans-serif; line-height: 1.6; overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- NAV (matches landing page) ---------- */
+  nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(10px); background: rgba(255,255,255,0.8); border-bottom: 1px solid var(--border); }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.3px; }
+  .brand img { width: 30px; height: 30px; border-radius: 7px; }
+  .brand span b { color: var(--blue); }
+  .nav-cta { background: var(--ink); color: #fff; padding: 9px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; transition: opacity .2s; }
+  .nav-cta:hover { opacity: 0.85; }
+
+  /* ---------- LEGAL ---------- */
+  .legal-hero { padding: 56px 0 28px; border-bottom: 1px solid var(--border); }
+  .legal-hero .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--blue); font-weight: 700; margin-bottom: 16px; }
+  .legal-hero .eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); }
+  .legal-hero h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.05; font-weight: 800; letter-spacing: -1px; }
+  .legal-hero .updated { color: var(--gray); margin-top: 14px; font-size: 14px; }
+  .legal { padding: 44px 0 80px; }
+  .legal-body { max-width: 760px; }
+
+  .toc { background: var(--soft); border: 1px solid var(--border); border-radius: 16px; padding: 22px 24px; margin-bottom: 40px; }
+  .toc h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--gray); margin-bottom: 12px; font-weight: 700; }
+  .toc ol { columns: 2; column-gap: 30px; padding-left: 20px; font-size: 14px; }
+  .toc li { margin-bottom: 7px; break-inside: avoid; }
+  .toc a { color: var(--text-soft); }
+  .toc a:hover { color: var(--blue); }
+
+  .legal-body h2 { font-size: 21px; font-weight: 800; letter-spacing: -0.3px; margin: 34px 0 10px; scroll-margin-top: 80px; }
+  .legal-body h2 .n { color: var(--blue); font-size: 15px; font-weight: 800; margin-right: 8px; }
+  .legal-body p { color: var(--text-soft); font-size: 16px; margin-bottom: 14px; }
+  .legal-body ul { margin: 0 0 16px; padding-left: 22px; }
+  .legal-body li { color: var(--text-soft); font-size: 16px; margin-bottom: 8px; }
+  .legal-body strong { color: var(--ink); }
+  .legal-body a { color: var(--blue); }
+  .callout { background: var(--blue-soft); border-left: 3px solid var(--blue); border-radius: 10px; padding: 14px 18px; margin: 4px 0 18px; font-size: 15px; color: var(--ink); }
+  .callout.warn { background: #FDECEC; border-left-color: var(--red); }
+
+  /* ---------- FOOTER (matches landing page, with legal links) ---------- */
+  footer { border-top: 1px solid var(--border); padding: 40px 0; color: var(--gray); font-size: 14px; }
+  .foot-inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; align-items: center; }
+  .foot-inner .brand span { color: var(--ink); }
+  .foot-links { display: flex; gap: 22px; }
+  .foot-links a { color: var(--gray); transition: color .2s; }
+  .foot-links a:hover { color: var(--ink); }
+
+  @media (max-width: 880px) { .toc ol { columns: 1; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-inner">
+    <a href="/" class="brand">
+      <img src="visionfit-landingpage-icon.png" alt="VisionFIT360 logo">
+      <span>Vision<b>FIT360</b></span>
+    </a>
+    <a href="/#download" class="nav-cta">Download app</a>
+  </div>
+</nav>
+
+<header class="legal-hero">
+  <div class="wrap">
+    <span class="eyebrow">Legal</span>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: November 12, 2026</p>
+  </div>
+</header>
+
+<main class="legal">
+  <div class="wrap legal-body">
+
+    <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <ol>
+        <li><a href="#intro">Introduction</a></li>
+        <li><a href="#collect">Information We Collect</a></li>
+        <li><a href="#account">Personal &amp; Account Information</a></li>
+        <li><a href="#fitness">Fitness &amp; Health-Related Information</a></li>
+        <li><a href="#camera">Camera Access &amp; Pose Tracking</a></li>
+        <li><a href="#ai">Artificial Intelligence Processing</a></li>
+        <li><a href="#google">Google Sign-In &amp; Authentication</a></li>
+        <li><a href="#storage">Data Storage &amp; Third-Party Services</a></li>
+        <li><a href="#use">How We Use Your Information</a></li>
+        <li><a href="#sharing">Data Sharing &amp; Disclosure</a></li>
+        <li><a href="#retention">Data Retention &amp; Account Deletion</a></li>
+        <li><a href="#security">Data Security</a></li>
+        <li><a href="#rights">User Privacy Rights</a></li>
+        <li><a href="#children">Children's Privacy</a></li>
+        <li><a href="#changes">Changes to This Policy</a></li>
+        <li><a href="#contact">Contact Information</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="intro"><span class="n">01</span>Introduction</h2>
+    <p>This Privacy Policy explains how VisionFIT360 ("VisionFIT360", "we", "us", or "our") collects, uses, stores, and protects your information when you use our mobile application and related services (the "App"). VisionFIT360 is an AI- and AR-powered fitness application that uses your device camera and real-time pose detection to count repetitions, check your exercise form, and provide personalized workout guidance.</p>
+    <p>By creating an account or using the App, you agree to the practices described in this Privacy Policy. If you do not agree, please do not use the App.</p>
+
+    <h2 id="collect"><span class="n">02</span>Information We Collect</h2>
+    <p>We collect only the information needed to operate the App's features. This includes information you provide directly (such as your account and profile details), information generated as you use the App (such as your workout history), and limited information from third-party sign-in providers you choose to use (such as Google). The following sections describe each category in detail.</p>
+
+    <h2 id="account"><span class="n">03</span>Personal &amp; Account Information</h2>
+    <p>When you register for an account, we collect:</p>
+    <ul>
+      <li><strong>Email address</strong> — used to identify your account, verify your email with a one-time code, and send account-related messages.</li>
+      <li><strong>Password</strong> — for email/password accounts. Your password is stored only in a securely hashed form and is never stored or readable in plain text.</li>
+      <li><strong>Profile details you provide</strong> — such as your chosen username, name, and (optionally) a profile photo.</li>
+    </ul>
+    <p>If you sign in with Google, see the <a href="#google">Google Sign-In &amp; Authentication</a> section below for the information we receive.</p>
+
+    <h2 id="fitness"><span class="n">04</span>Fitness &amp; Health-Related Information</h2>
+    <p>To personalize your experience and power features such as BMI calculation and AI workout recommendations, we collect the fitness information you provide, which may include:</p>
+    <ul>
+      <li>Date of birth, gender, height, and weight;</li>
+      <li>Fitness goal (for example, get fit, maintain weight, or get lean);</li>
+      <li>Workout history — the exercises you perform, repetitions, sets, weights, rest, duration, and form-quality summaries;</li>
+      <li>Feedback or ratings you choose to submit about the App.</li>
+    </ul>
+    <p>This information is used only to operate the App's features. We do not use it for advertising, and we do not sell it.</p>
+
+    <h2 id="camera"><span class="n">05</span>Camera Access &amp; Pose Tracking</h2>
+    <p>The App's AR rep-counting feature ("RepVision") requires access to your device camera. We want to be clear about how this works:</p>
+    <div class="callout"><strong>Pose detection runs entirely on your device.</strong> Camera frames are analyzed in real time on your phone using on-device pose estimation. Individual camera images and video are <strong>not uploaded to or stored on our servers</strong>.</div>
+    <ul>
+      <li>Only the <strong>results</strong> of a session — such as the exercise name, repetition count, and a form-quality summary (good/bad rep counts) — are saved to your account so you can review them in your workout history.</li>
+      <li>Camera access is used only while you are actively using the AR tracking feature. You can revoke camera permission at any time in your device settings, which will disable AR tracking but not the rest of the App.</li>
+    </ul>
+
+    <h2 id="ai"><span class="n">06</span>Artificial Intelligence Processing</h2>
+    <p>The App uses a third-party AI service to generate personalized workout recommendations and to power the in-app AI coach. When you request a recommendation or chat with the coach, we send relevant training context to our AI provider so it can produce a tailored response. This context may include your fitness goal, approximate body metrics (such as BMI), age range, and summarized workout history.</p>
+    <p>We minimize what is shared: we do not send your email address or password to the AI provider. AI-generated recommendations are provided for general informational purposes and are not medical advice (see our <a href="/terms">Terms of Service</a>).</p>
+    <div class="callout">Our current AI provider is <strong>Groq</strong>, which hosts the language model used to generate recommendations. The specific provider or model may change over time; we will update this policy accordingly.</div>
+
+    <h2 id="google"><span class="n">07</span>Google Sign-In &amp; Authentication</h2>
+    <p>You may choose to sign in with Google. When you do, Google shares a limited set of basic profile information with us — your Google account <strong>email address</strong>, <strong>name</strong>, and <strong>profile picture</strong> — which we use to create or access your VisionFIT360 account.</p>
+    <ul>
+      <li>We request only basic profile and email information.</li>
+      <li>We <strong>do not</strong> receive or store your Google password.</li>
+      <li>Google's handling of your information is governed by Google's own privacy policy.</li>
+    </ul>
+
+    <h2 id="storage"><span class="n">08</span>Data Storage &amp; Third-Party Services</h2>
+    <p>Your account and fitness data are stored in a secured cloud database. To operate the App, we rely on a small number of reputable third-party service providers, each of which processes only the data needed for its function:</p>
+    <ul>
+      <li><strong>Cloud database &amp; hosting</strong> — stores your account and workout data and runs our backend services.</li>
+      <li><strong>Cloudinary</strong> — stores profile photos you choose to upload.</li>
+      <li><strong>Brevo</strong> — sends transactional emails such as verification and password-reset codes.</li>
+      <li><strong>Groq</strong> — processes the context described above to generate AI workout recommendations.</li>
+      <li><strong>Google</strong> — provides optional Google Sign-In.</li>
+    </ul>
+    <p>These providers act as our service providers and are not permitted to use your data for their own purposes.</p>
+
+    <h2 id="use"><span class="n">09</span>How We Use Your Information</h2>
+    <ul>
+      <li>To create, secure, and authenticate your account (including email verification and Google Sign-In);</li>
+      <li>To power core features such as AR rep counting, form feedback, BMI calculation, AI workout recommendations, and progress history;</li>
+      <li>To personalize your experience based on your goals and training history;</li>
+      <li>To send essential account communications, such as verification and password-reset codes;</li>
+      <li>To maintain the safety, security, and reliability of the App, including preventing abuse.</li>
+    </ul>
+
+    <h2 id="sharing"><span class="n">10</span>Data Sharing &amp; Disclosure</h2>
+    <p>We <strong>do not sell</strong> your personal data. We share data only in these limited circumstances:</p>
+    <ul>
+      <li><strong>Service providers</strong> — the third parties listed above, strictly to operate the App on our behalf;</li>
+      <li><strong>Legal requirements</strong> — where required to comply with applicable law, regulation, legal process, or enforceable governmental request;</li>
+      <li><strong>Protection of rights and safety</strong> — where necessary to protect the rights, property, or safety of our users, the public, or VisionFIT360.</li>
+    </ul>
+
+    <h2 id="retention"><span class="n">11</span>Data Retention &amp; Account Deletion</h2>
+    <p>We retain your account and associated data for as long as your account is active. Accounts that are created but never verified may be automatically removed after a short period.</p>
+    <p>You may request deletion of your account and all associated data (including workouts and feedback) by emailing us at <a href="mailto:visionfit360@gmail.com">visionfit360@gmail.com</a>. Upon deletion, your account and the data tied to it are permanently removed from our active systems.</p>
+
+    <h2 id="security"><span class="n">12</span>Data Security</h2>
+    <p>We take reasonable technical and organizational measures to protect your information, including:</p>
+    <ul>
+      <li>Passwords stored only as salted, hashed values — never in plain text;</li>
+      <li>Encrypted connections (HTTPS) between the App and our servers;</li>
+      <li>Authentication tokens, email verification, and rate limiting to protect against unauthorized access and abuse.</li>
+    </ul>
+    <p>No method of transmission or storage is completely secure, so while we work to protect your information, we cannot guarantee absolute security.</p>
+
+    <h2 id="rights"><span class="n">13</span>User Privacy Rights</h2>
+    <p>Depending on your location, you may have rights regarding your personal information, including the right to:</p>
+    <ul>
+      <li>Access the personal information we hold about you;</li>
+      <li>Correct or update inaccurate information (much of which you can edit directly in the App);</li>
+      <li>Request deletion of your account and associated data;</li>
+      <li>Withdraw permissions, such as camera access, through your device settings.</li>
+    </ul>
+    <p>To exercise any of these rights, contact us at <a href="mailto:visionfit360@gmail.com">visionfit360@gmail.com</a>.</p>
+
+    <h2 id="children"><span class="n">14</span>Children's Privacy</h2>
+    <p>VisionFIT360 is intended for individuals aged 13 and older. The App applies additional safety limits to workout recommendations for younger users. We do not knowingly collect personal information from children under 13 without appropriate consent. If you believe a child under 13 has provided us with personal information, please contact us at <a href="mailto:visionfit360@gmail.com">visionfit360@gmail.com</a> so we can take appropriate action.</p>
+
+    <h2 id="changes"><span class="n">15</span>Changes to This Privacy Policy</h2>
+    <p>We may update this Privacy Policy from time to time. When we do, we will revise the "Last updated" date at the top of this page. Significant changes may be communicated through the App. Your continued use of the App after an update means you accept the revised policy.</p>
+
+    <h2 id="contact"><span class="n">16</span>Contact Information</h2>
+    <p>If you have questions or requests regarding this Privacy Policy or your data, contact us at:</p>
+    <p><strong>Email:</strong> <a href="mailto:visionfit360@gmail.com">visionfit360@gmail.com</a></p>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <a href="/" class="brand"><img src="visionfit-landingpage-icon.png" alt="" style="width:24px;height:24px;border-radius:6px"> <span>Vision<b style="color:var(--blue)">FIT360</b></span></a>
+    <div class="foot-links">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms of Service</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

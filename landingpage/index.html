@@ -144,6 +144,9 @@
   footer { border-top: 1px solid var(--border); padding: 40px 0; color: var(--gray); font-size: 14px; }
   .foot-inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; align-items: center; }
   .foot-inner .brand span { color: var(--ink); }
+  .foot-links { display: flex; gap: 22px; }
+  .foot-links a { color: var(--gray); transition: color .2s; }
+  .foot-links a:hover { color: var(--ink); }
 
   @media (max-width: 880px) {
     .hero-grid { grid-template-columns: 1fr; }
@@ -319,6 +322,10 @@
 <footer>
   <div class="wrap foot-inner">
     <div class="brand"><img src="visionfit-landingpage-icon.png" alt="" style="width:24px;height:24px;border-radius:6px"> <span>Vision<b style="color:var(--blue)">FIT360</b></span></div>
+    <div class="foot-links">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms of Service</a>
+    </div>
   </div>
 </footer>
 
