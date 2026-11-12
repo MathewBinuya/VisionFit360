@@ -32,7 +32,6 @@ export default function UserDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [woPage, setWoPage] = useState(1); // workout history page
-  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -43,22 +42,6 @@ export default function UserDetail() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
-
-  // permanently removes the account and everything tied to it (workouts,
-  // feedback, login events) via the backend's cascade delete.
-  const handleDelete = useCallback(() => {
-    const u = data?.user;
-    const who = u ? (displayName(u) + (u.email ? ` (${u.email})` : "")) : "this user";
-    if (!window.confirm(`Permanently delete ${who} and all their data? This cannot be undone.`)) return;
-    setDeleting(true);
-    api
-      .delete(`/users/${id}`)
-      .then(() => navigate("/users"))
-      .catch((err) => {
-        setError(err.response?.data?.message || "Failed to delete user");
-        setDeleting(false);
-      });
-  }, [data, id, navigate]);
 
   const u = data?.user;
   const bmi = u ? bmiInfo(u.heightCm, u.weightKg) : null;
@@ -85,9 +68,6 @@ export default function UserDetail() {
                 <div className="profile-badges">
                   <span className={`badge ${st.className}`}>{st.label}</span>
                   {u.goal && <span className="badge badge-neutral">{GOAL_LABELS[u.goal] || u.goal}</span>}
-                  <button className="btn-danger" onClick={handleDelete} disabled={deleting}>
-                    {deleting ? "Deleting…" : "Delete user"}
-                  </button>
                 </div>
               </div>
 
