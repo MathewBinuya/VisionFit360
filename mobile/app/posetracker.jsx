@@ -176,14 +176,18 @@ export default function PoseTracker() {
     }
     setSaving(true);
     try {
-      await api.post("/workouts", {
+      // Two steps: create, then mark complete. The create endpoint intentionally
+      // ignores `completed` (completion is server-owned and flows through
+      // PATCH /:id/complete), so a one-shot `completed:true` create would save as
+      // NOT completed and never reach the completed-only history. Create first,
+      // then complete the returned workout by id.
+      const { data: created } = await api.post("/workouts", {
         title: `${exercise.charAt(0).toUpperCase() + exercise.slice(1)} session (AR)`,
         exercises: [
-          { name: exercise, sets: [{ reps: count, weightKg, goodReps: count, badReps: badCount }] },
+          { name: exercise, sets: [{ reps: count, weightKg, goodReps: count, badReps: badCount, completed: true }] },
         ],
-        completed: true,
-        completedAt: new Date(),
       });
+      await api.patch(`/workouts/${created._id}/complete`, { completedAt: new Date() });
       sendHeartbeat(); // workout finish -> mark user active
       refreshProgressNotifications();
 
