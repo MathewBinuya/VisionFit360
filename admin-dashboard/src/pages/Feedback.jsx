@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import { Avatar, RatingStars, StateBlock, Pagination, TableScroll } from "../components/ui";
@@ -7,24 +7,56 @@ import { relativeTime, dateTime, displayName } from "../lib/format";
 
 const PAGE_SIZE = 10;
 
+// Date-range + sort options (filtering/sorting happens server-side, in the query).
+// "Today / This Week / This Month" are computed in Asia/Manila by the backend.
+const RANGES = [
+  { key: "all", label: "All time" },
+  { key: "today", label: "Today" },
+  { key: "week", label: "This week" },
+  { key: "month", label: "This month" },
+];
+
+// Star-rating tabs: All + 5★…1★.
+const RATING_TABS = ["all", 5, 4, 3, 2, 1];
+const ratingLabel = (r) => (r === "all" ? "All" : `${r}★`);
+
 export default function Feedback() {
   const navigate = useNavigate();
   const [resp, setResp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [rating, setRating] = useState("all");   // "all" | 5 | 4 | 3 | 2 | 1
+  const [range, setRange] = useState("all");      // all | today | week | month
+  const [sort, setSort] = useState("newest");     // newest | oldest
   const [page, setPage] = useState(1);
 
-  const load = useCallback((p) => {
+  const load = useCallback((params) => {
+    setLoading(true);
     api
-      .get("/feedback", { params: { page: p, limit: PAGE_SIZE } })
+      .get("/feedback", { params })
       .then((res) => { setResp(res.data); setError(""); })
       .catch((err) => setError(err.response?.data?.message || "Failed to load feedback"))
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { load(page); }, [page, load]);
+  // React to any filter/sort/page change. First load fires immediately.
+  const first = useRef(true);
+  useEffect(() => {
+    const params = {
+      page,
+      limit: PAGE_SIZE,
+      sort,
+      range: range === "all" ? undefined : range,
+      rating: rating === "all" ? undefined : rating,
+    };
+    load(params);
+    first.current = false;
+  }, [page, sort, range, rating, load]);
 
   const items = resp?.data || [];
+  const counts = resp?.counts || {};
+  const filtersActive = range !== "all" || rating !== "all";
 
   return (
     <div className="layout">
@@ -32,15 +64,54 @@ export default function Feedback() {
       <div className="main">
         <h1 className="page-title">Feedback</h1>
         <p className="page-sub" style={{ marginBottom: 20 }}>
-          User-submitted feedback from the mobile app — newest first.
+          User-submitted feedback from the mobile app. Filter by date and star rating.
         </p>
+
+        {/* star-rating tabs (counts reflect the active date filter) */}
+        <div className="seg-tabs" role="tablist" aria-label="Filter by rating">
+          {RATING_TABS.map((r) => (
+            <button
+              key={r}
+              role="tab"
+              aria-selected={rating === r}
+              className={rating === r ? "active" : ""}
+              onClick={() => { setPage(1); setRating(r); }}
+            >
+              {ratingLabel(r)}
+              <span className="seg-count">({counts[r] ?? 0})</span>
+            </button>
+          ))}
+        </div>
+
+        {/* date range + sort (server-side) */}
+        <div className="toolbar">
+          <select
+            className="select"
+            value={range}
+            onChange={(e) => { setPage(1); setRange(e.target.value); }}
+            aria-label="Date range"
+          >
+            {RANGES.map((r) => (
+              <option key={r.key} value={r.key}>{r.label}</option>
+            ))}
+          </select>
+          <select
+            className="select"
+            value={sort}
+            onChange={(e) => { setPage(1); setSort(e.target.value); }}
+            aria-label="Sort by date"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </div>
 
         <div className="card">
           <StateBlock
             loading={loading && !resp}
             error={error}
             empty={resp && items.length === 0}
-            emptyText="No feedback submitted yet."
+            emptyText={filtersActive ? "No reviews found for this filter." : "No feedback submitted yet."}
           >
             <TableScroll>
               <table className="rows">

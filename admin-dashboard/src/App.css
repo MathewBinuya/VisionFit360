@@ -438,6 +438,9 @@ table.rows tfoot .row-total td { padding-top: 12px; }
   padding: 8px 16px; border-radius: 7px; cursor: pointer;
 }
 .seg-tabs button.active { background: var(--cards); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+/* per-tab count badge (e.g. Feedback rating tabs: "5★ (12)") */
+.seg-tabs button .seg-count { margin-left: 5px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.seg-tabs button.active .seg-count { color: var(--ink); }
 .analytics-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 
 /* ---------- 404 NOT FOUND ---------- */
