@@ -81,6 +81,10 @@ export const resetInbox = async () => {
 const OWNER_KEY = "notifInboxOwner_v1";
 export const ensureInboxOwner = async (userId) => {
   const id = userId == null ? "" : String(userId);
+  // An empty/unknown id means the signed-in account can't be confirmed (e.g. a
+  // stored user that briefly lacks its id). NEVER wipe the feed on that — only a
+  // confirmed, different, NON-EMPTY account id counts as an account switch.
+  if (!id) return false;
   let owner = "";
   try { owner = (await AsyncStorage.getItem(OWNER_KEY)) || ""; } catch (_e) {}
   if (owner === id) return false;

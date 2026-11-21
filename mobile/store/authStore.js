@@ -21,6 +21,17 @@ const isolateNotificationsFor = async (userId) => {
   } catch (_e) {}
 };
 
+// Auth endpoints return the account as `user.id`, but raw profile/Mongoose docs
+// serialize only `_id`. The app keys the signed-in account off `user.id`, so
+// persisting a raw profile response would drop it — and a later read with no id
+// looks like an account switch and wipes the notification feed. Normalize once,
+// here, before anything stores the user. Returns the SAME object when unchanged.
+const withId = (u) => {
+  if (!u || typeof u !== "object" || u.id != null) return u;
+  if (u._id != null) return { ...u, id: String(u._id) };
+  return u;
+};
+
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -185,7 +196,12 @@ export const useAuthStore = create((set) => ({
     try {
       const token = await AsyncStorage.getItem("token");
       const userJson = await AsyncStorage.getItem("user");
-      const user = userJson ? JSON.parse(userJson) : null;
+      const parsed = userJson ? JSON.parse(userJson) : null;
+      // heal legacy sessions stored before the fix (raw doc, `_id` but no `id`)
+      const user = withId(parsed);
+      if (parsed && user !== parsed) {
+        try { await AsyncStorage.setItem("user", JSON.stringify(user)); } catch (_e) {}
+      }
 
       // restoring a saved session: reconcile the feed owner (no-op for the same
       // account; resets it if a different account's data somehow lingers).
@@ -207,8 +223,9 @@ export const useAuthStore = create((set) => ({
   },
 
   setUser: async (updatedUser) => {
-    await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
-    set({ user: updatedUser });
+    const user = withId(updatedUser);
+    await AsyncStorage.setItem("user", JSON.stringify(user));
+    set({ user });
   },
 
   logout: async () => {
