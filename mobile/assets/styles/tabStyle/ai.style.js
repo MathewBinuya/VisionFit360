@@ -49,6 +49,36 @@ const styles = StyleSheet.create({
   coachText: { fontSize: 14, color: COLORS.black, lineHeight: 20, fontFamily: "GeneralSans-Variable" },
   userText: { fontSize: 14, color: COLORS.white, lineHeight: 20, fontFamily: "GeneralSans-Variable" },
 
+  // Suggested-question chips strip (above the input bar). Pill chips reuse the
+  // app's input background, border and button colour so they read as native.
+  suggestionBar: {
+    flexGrow: 0,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.background,
+  },
+  suggestionBarContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  suggestionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: COLORS.inputBackground,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 20,
+  },
+  suggestionChipText: {
+    fontSize: 13,
+    color: COLORS.black,
+    fontFamily: "GeneralSans-Variable",
+  },
+
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",

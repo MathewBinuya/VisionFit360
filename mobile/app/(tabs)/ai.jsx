@@ -9,6 +9,7 @@ import api from '../../lib/axios'
 import { useAuthStore } from '../../store/authStore'
 import Celebration from '../../components/Celebration'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { AI_SUGGESTED_QUESTIONS } from '../../constants/aiSuggestions'
 
 const formatRecommendationText = (rec) => {
   const exerciseLines = rec.exercises.map((ex) => {
@@ -90,14 +91,18 @@ export default function AICoach() {
     }
   };
 
-  const sendMessage = async () => {
-    const text = input.trim();
+  // `presetText` is passed when a suggested-question chip is tapped; the Send
+  // button calls this with the press event, so we only treat a real string as a
+  // preset and otherwise fall back to the typed input.
+  const sendMessage = async (presetText) => {
+    const isPreset = typeof presetText === "string";
+    const text = (isPreset ? presetText : input).trim();
     if (!text || loading) return;
 
     const userMsg = { role: "user", text };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
-    setInput("");
+    if (!isPreset) setInput("");
     setLoading(true);
 
     try {
@@ -317,6 +322,31 @@ export default function AICoach() {
             </View>
           </View>
       </Modal>
+
+      {/* suggested questions (FAQ chips) — tapping one sends it to the coach.
+          Answers are personalised server-side from the user's saved profile. */}
+      {!initialLoading && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={styles.suggestionBar}
+          contentContainerStyle={styles.suggestionBarContent}
+        >
+          {AI_SUGGESTED_QUESTIONS.map((q) => (
+            <TouchableOpacity
+              key={q}
+              style={[styles.suggestionChip, loading && { opacity: 0.5 }]}
+              onPress={() => sendMessage(q)}
+              disabled={loading}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={13} color={COLORS.button} />
+              <Text style={styles.suggestionChipText} numberOfLines={1}>{q}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       {/* input */}
       <View style={styles.inputBar}>

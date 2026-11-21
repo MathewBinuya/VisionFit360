@@ -2,6 +2,8 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 import { showAlert } from '../components/AppAlert'
 import PressableScale from '../components/PressableScale'
 import AnimatedBar from '../components/AnimatedBar'
+import AutocompleteInput from '../components/AutocompleteInput'
+import { ROUTINE_SUGGESTIONS, exercisesForRoutine } from '../constants/workoutSuggestions'
 import { useState, useEffect, useRef } from 'react'
 import { refreshProgressNotifications } from '../lib/notifications'
 import { router } from 'expo-router'
@@ -843,17 +845,18 @@ export default function Workout() {
                 <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.gray, marginBottom: 6 }}>
                   WORKOUT TITLE
                 </Text>
-                <TextInput
+                <AutocompleteInput
                   style={{
                     borderWidth: 1, borderColor: COLORS.border, borderRadius: 10,
                     padding: 12, fontSize: 15, color: COLORS.black,
-                    backgroundColor: COLORS.inputBackground, marginBottom: 20,
+                    backgroundColor: COLORS.inputBackground,
                   }}
+                  containerStyle={{ marginBottom: 20 }}
                   value={editTitle}
                   onChangeText={setEditTitle}
                   placeholder="e.g. Upper Body Day"
-                  placeholderTextColor={COLORS.placeholderText}
                   onFocus={onInputFocus}
+                  suggestions={ROUTINE_SUGGESTIONS}
                 />
 
                 {/* exercises */}
@@ -864,16 +867,17 @@ export default function Workout() {
                   }}>
                     {/* exercise name + remove */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <TextInput
+                      <AutocompleteInput
+                        containerStyle={{ flex: 1 }}
                         style={{
-                          flex: 1, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8,
+                          borderWidth: 1, borderColor: COLORS.border, borderRadius: 8,
                           padding: 10, fontSize: 14, color: COLORS.black, backgroundColor: COLORS.white,
                         }}
                         value={ex.name}
                         onChangeText={(t) => updateExerciseName(exIdx, t)}
                         placeholder="Exercise name"
-                        placeholderTextColor={COLORS.placeholderText}
                         onFocus={onInputFocus}
+                        suggestions={exercisesForRoutine(editTitle)}
                       />
                       <TouchableOpacity onPress={() => removeExercise(exIdx)} hitSlop={8}>
                         <Ionicons name="close-circle" size={22} color="#E24B4A" />
@@ -1013,13 +1017,14 @@ export default function Workout() {
               >
               <View ref={formContentRef} collapsable={false}>
                 <Text style={styles.inputLabel}>Routine Name</Text>
-                <TextInput
-                  style={[styles.input, { marginBottom: 20 }]}
+                <AutocompleteInput
+                  style={styles.input}
+                  containerStyle={{ marginBottom: 20 }}
                   placeholder="e.g Upper Body Day"
-                  placeholderTextColor={COLORS.placeholderText}
                   onFocus={onInputFocus}
                   value={newTitle}
                   onChangeText={setNewTitle}
+                  suggestions={ROUTINE_SUGGESTIONS}
                 />
 
                 {/* exercises */}
@@ -1030,16 +1035,17 @@ export default function Workout() {
                   }}>
                     {/* exercise name + remove */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <TextInput
+                      <AutocompleteInput
+                        containerStyle={{ flex: 1 }}
                         style={{
-                          flex: 1, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8,
+                          borderWidth: 1, borderColor: COLORS.border, borderRadius: 8,
                           padding: 10, fontSize: 14, color: COLORS.black, backgroundColor: COLORS.white,
                         }}
                         value={ex.name}
                         onChangeText={(t) => updateNewExerciseName(exIdx, t)}
                         placeholder="Exercise name"
-                        placeholderTextColor={COLORS.placeholderText}
                         onFocus={onInputFocus}
+                        suggestions={exercisesForRoutine(newTitle)}
                       />
                       <TouchableOpacity onPress={() => removeNewExercise(exIdx)} hitSlop={8}>
                         <Ionicons name="close-circle" size={22} color="#E24B4A" />
