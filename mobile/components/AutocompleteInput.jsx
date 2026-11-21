@@ -1,17 +1,19 @@
 // AutocompleteInput — a lightweight searchable text field (combobox) with a
-// floating suggestion dropdown. No third-party library: just a TextInput plus an
-// absolutely-positioned list, so it stays small and fully themeable with our
-// existing COLORS. Built for the Workout Tracker's Routine / Exercise name
-// fields.
+// suggestion dropdown. No third-party library: just a TextInput plus a small
+// list, so it stays small and fully themeable with our existing COLORS. Built
+// for the Workout Tracker's Routine / Exercise name fields.
 //
 // SUGGESTIONS ONLY: the field is a normal text input first. The user can type
 // anything; suggestions filter case-insensitively as they type, and a tap just
 // fills the field. Non-matching text is kept as a valid custom entry.
 //
-// The dropdown floats over the content below it (zIndex/elevation raised only
-// while open), so it never permanently pushes the form around.
+// The dropdown renders INLINE (in normal layout flow, right under the input)
+// rather than as an absolute/elevated overlay. On Android, toggling a view's
+// elevation/zIndex on focus re-lays-out the field and drops the keyboard — an
+// inline list avoids that entirely, so focus is never lost. It pushes the
+// fields below it down only while open.
 import { useState, useRef } from 'react';
-import { View, TextInput, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, TextInput, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import COLORS from '../constants/colors';
 
@@ -48,16 +50,12 @@ export default function AutocompleteInput({
   const handleFocus = (e) => { setFocused(true); onFocus?.(e); };
   const handleBlur = (e) => { setFocused(false); onBlur?.(e); };
 
-  const pick = (item) => {
-    onChangeText?.(item);
-    setFocused(false);
-    inputRef.current?.blur();
-  };
+  // Fill the field but KEEP focus (don't blur) so the keyboard stays up for the
+  // next field. The value is now an exact match, so the list hides itself.
+  const pick = (item) => onChangeText?.(item);
 
   return (
-    // Raise stacking only while open so the dropdown overlays the fields beneath
-    // it; collapse it again afterwards so neighbouring dropdowns stack correctly.
-    <View style={[{ position: 'relative' }, open && { zIndex: 20, elevation: 20 }, containerStyle]}>
+    <View style={containerStyle}>
       <TextInput
         ref={inputRef}
         style={style}
@@ -73,24 +71,19 @@ export default function AutocompleteInput({
 
       {open && (
         <View style={styles.dropdown}>
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-            showsVerticalScrollIndicator={false}
-          >
-            {filtered.map((item, i) => (
-              <TouchableOpacity
-                key={item}
-                onPress={() => pick(item)}
-                style={[styles.row, i < filtered.length - 1 && styles.rowDivider]}
-                accessibilityRole="button"
-                accessibilityLabel={`Use ${item}`}
-              >
-                <Ionicons name="search-outline" size={15} color={COLORS.placeholderText} />
-                <Text style={styles.rowText} numberOfLines={1}>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {filtered.map((item, i) => (
+            <TouchableOpacity
+              key={item}
+              // keep the keyboard open when a suggestion is tapped
+              onPress={() => pick(item)}
+              style={[styles.row, i < filtered.length - 1 && styles.rowDivider]}
+              accessibilityRole="button"
+              accessibilityLabel={`Use ${item}`}
+            >
+              <Ionicons name="search-outline" size={15} color={COLORS.placeholderText} />
+              <Text style={styles.rowText} numberOfLines={1}>{item}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
     </View>
@@ -99,24 +92,12 @@ export default function AutocompleteInput({
 
 const styles = {
   dropdown: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
     marginTop: 4,
-    maxHeight: 210,
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 10,
     overflow: 'hidden',
-    // float above the form (both platforms)
-    zIndex: 30,
-    elevation: 6,
-    shadowColor: COLORS.black,
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
   },
   row: {
     flexDirection: 'row',

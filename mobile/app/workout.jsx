@@ -866,7 +866,7 @@ export default function Workout() {
                     padding: 14, marginBottom: 16, backgroundColor: COLORS.inputBackground,
                   }}>
                     {/* exercise name + remove */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
                       <AutocompleteInput
                         containerStyle={{ flex: 1 }}
                         style={{
@@ -879,7 +879,7 @@ export default function Workout() {
                         onFocus={onInputFocus}
                         suggestions={exercisesForRoutine(editTitle)}
                       />
-                      <TouchableOpacity onPress={() => removeExercise(exIdx)} hitSlop={8}>
+                      <TouchableOpacity onPress={() => removeExercise(exIdx)} hitSlop={8} style={{ marginTop: 8 }}>
                         <Ionicons name="close-circle" size={22} color="#E24B4A" />
                       </TouchableOpacity>
                     </View>
@@ -1034,7 +1034,7 @@ export default function Workout() {
                     padding: 14, marginBottom: 16, backgroundColor: COLORS.inputBackground,
                   }}>
                     {/* exercise name + remove */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
                       <AutocompleteInput
                         containerStyle={{ flex: 1 }}
                         style={{
@@ -1047,7 +1047,7 @@ export default function Workout() {
                         onFocus={onInputFocus}
                         suggestions={exercisesForRoutine(newTitle)}
                       />
-                      <TouchableOpacity onPress={() => removeNewExercise(exIdx)} hitSlop={8}>
+                      <TouchableOpacity onPress={() => removeNewExercise(exIdx)} hitSlop={8} style={{ marginTop: 8 }}>
                         <Ionicons name="close-circle" size={22} color="#E24B4A" />
                       </TouchableOpacity>
                     </View>
