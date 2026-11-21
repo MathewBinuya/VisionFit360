@@ -1085,24 +1085,69 @@ export const updateUserStatus = async (req, res) => {
 };
 
 //  FEEDBACK (admin read — the dedicated Feedback tab)
-//  Paginated, newest first. Records left behind by deleted accounts are ignored,
-//  matching the rest of the dashboard. The mobile submit flow is untouched.
+//  Paginated and filterable by star rating and date range, sortable by date.
+//  Filtering/sorting is done in the query (not on the client). Records left
+//  behind by deleted accounts are ignored, matching the rest of the dashboard.
+//  The mobile submit flow is untouched.
+
+// Start instant of a named date range, computed in Asia/Manila (UTC+8) so
+// "Today / This Week / This Month" line up with the user's local calendar — a
+// feedback left at 1am Manila still counts as today. "This Week" starts Monday.
+// Returns null for "all" (no lower bound).
+const feedbackRangeStart = (rangeKey) => {
+  if (!["today", "week", "month"].includes(rangeKey)) return null;
+  // Shift now into Manila local time so the UTC getters read Manila Y/M/D/weekday.
+  const local = new Date(Date.now() + MANILA_OFFSET_MS);
+  const y = local.getUTCFullYear();
+  const m = local.getUTCMonth();
+  const d = local.getUTCDate();
+  if (rangeKey === "month") return new Date(Date.UTC(y, m, 1) - MANILA_OFFSET_MS);
+  if (rangeKey === "week") {
+    const daysSinceMonday = (local.getUTCDay() + 6) % 7; // Sun=0 -> 6, Mon=1 -> 0
+    return new Date(Date.UTC(y, m, d - daysSinceMonday) - MANILA_OFFSET_MS);
+  }
+  return new Date(Date.UTC(y, m, d) - MANILA_OFFSET_MS); // today
+};
+
 export const getFeedback = async (req, res) => {
   try {
     const { page, limit } = parsePaging(req);
-    const liveUsers = await User.distinct("_id");
-    const match = ownedBy(liveUsers);
 
-    const [data, total] = await Promise.all([
-      Feedback.find(match)
-        .sort({ createdAt: -1 })
+    const rangeKey = ["today", "week", "month"].includes(req.query.range) ? req.query.range : "all";
+    const start = feedbackRangeStart(rangeKey);
+    const sortDir = req.query.sort === "oldest" ? 1 : -1; // default newest first
+    const ratingParam = Math.floor(Number(req.query.rating));
+    const rating = [1, 2, 3, 4, 5].includes(ratingParam) ? ratingParam : null;
+
+    const liveUsers = await User.distinct("_id");
+    // Base match = owned + date range (shared by the list and the tab counts, so
+    // the per-rating counts reflect the active date filter).
+    const baseMatch = ownedBy(liveUsers);
+    if (start) baseMatch.createdAt = { $gte: start };
+    // The list additionally narrows by the selected rating tab.
+    const listMatch = rating ? { ...baseMatch, rating } : baseMatch;
+
+    const [data, total, ratingGroups] = await Promise.all([
+      Feedback.find(listMatch)
+        .sort({ createdAt: sortDir })
         .skip((page - 1) * limit)
         .limit(limit)
         .populate("user", "name username email photo"),
-      Feedback.countDocuments(match),
+      Feedback.countDocuments(listMatch),
+      Feedback.aggregate([
+        { $match: baseMatch },
+        { $group: { _id: "$rating", count: { $sum: 1 } } },
+      ]),
     ]);
 
-    res.json(pageMeta(data, total, page, limit));
+    // Counts for the rating tabs: All + one per star, within the date range.
+    const counts = { all: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const g of ratingGroups) {
+      if (counts[g._id] != null) counts[g._id] = g.count;
+      counts.all += g.count;
+    }
+
+    res.json({ ...pageMeta(data, total, page, limit), counts });
   } catch (error) {
     console.log("getFeedback error:", error);
     res.status(500).json({ message: "Server error" });
