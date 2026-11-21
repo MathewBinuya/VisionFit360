@@ -5,7 +5,9 @@ import { Avatar, RatingStars, StateBlock, Pagination, TableScroll } from "../com
 import api from "../lib/api";
 import { relativeTime, dateTime, displayName } from "../lib/format";
 
-const PAGE_SIZE = 10;
+// 5 per page so the Prev/Next pager appears without needing a large volume of
+// reviews (the shared Pagination component only shows arrows past one page).
+const PAGE_SIZE = 5;
 
 // Date-range + sort options (filtering/sorting happens server-side, in the query).
 // "Today / This Week / This Month" are computed in Asia/Manila by the backend.
