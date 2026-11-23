@@ -131,6 +131,22 @@
   .step h3 { font-size: 18px; margin: 10px 0 6px; }
   .step p { color: var(--text-soft); font-size: 15px; }
 
+  /* tech stack / docs band */
+  .techstack {
+    background: var(--soft); border: 1px solid var(--border); border-radius: 24px;
+    padding: 48px;
+  }
+  .techstack .eyebrow { margin-bottom: 16px; }
+  .techstack h2 { margin-bottom: 14px; }
+  .techstack .ts-copy p { color: var(--text-soft); font-size: 17px; max-width: 560px; }
+  .ts-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 28px; }
+  .ts-tag {
+    font-size: 13px; font-weight: 600; color: var(--text-soft);
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 14px;
+  }
+  .ts-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+
   /* download band */
   .download { text-align: center; background: var(--ink); border-radius: 24px; padding: 64px 28px; color: #fff; }
   .download .eyebrow { color: #6FA8EE; justify-content: center; display: inline-flex; }
@@ -153,6 +169,7 @@
     .pose-stage { max-width: 360px; margin: 8px auto 0; }
     .stats { grid-template-columns: repeat(2,1fr); }
     .features, .steps { grid-template-columns: 1fr; }
+    .techstack { padding: 36px 24px; }
   }
   @media (prefers-reduced-motion: reduce) { .scan, .breathe { animation: none; } }
 </style>
@@ -165,7 +182,10 @@
       <img src="visionfit-landingpage-icon.png" alt="VisionFIT360 logo">
       <span>Vision<b>FIT360</b></span>
     </div>
-    <a href="#download" class="nav-cta">Download app</a>
+    <div style="display:flex; align-items:center; gap:18px;">
+      <a href="#techstack" style="font-size:14px; font-weight:600; color:var(--text-soft);">Tech stack</a>
+      <a href="#download" class="nav-cta">Download app</a>
+    </div>
   </div>
 </nav>
 
@@ -299,6 +319,35 @@
         <h3>Move and improve</h3>
         <p>Watch your reps count up and your form light up green or red — real-time feedback with every movement.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK / DOCUMENTATION -->
+<section id="techstack">
+  <div class="wrap">
+    <div class="techstack">
+      <div class="ts-copy">
+        <span class="eyebrow">For the exhibit</span>
+        <h2>Tech stack &amp; how it's built</h2>
+        <p>Everything about VisionFIT360 — the full architecture, the technology stack and why each piece was chosen, how RepVision counts reps and checks form, the AI coach, security, the data model, and a question bank — in one document. Download or view the PDF below.</p>
+        <div class="ts-tags">
+          <span class="ts-tag">React Native · Expo</span>
+          <span class="ts-tag">MediaPipe Pose</span>
+          <span class="ts-tag">Node · Express</span>
+          <span class="ts-tag">MongoDB</span>
+          <span class="ts-tag">Google Gemini</span>
+          <span class="ts-tag">React · Vite</span>
+        </div>
+        <div class="ts-actions">
+          <a href="/visionfit360-techstack.pdf" target="_blank" rel="noopener" class="btn btn-primary" download>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download PDF
+          </a>
+          <a href="/visionfit360-techstack.pdf" target="_blank" rel="noopener" class="btn btn-ghost">View in browser</a>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
